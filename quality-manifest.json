@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "loop1": {
+    "iterations": 30,
+    "output": "docs/improvements.md",
+    "prompt": "Critique the current application state against industry standards, competitors, UX conventions, and commercial viability. Record every gap as an improvement finding with severity, area, evidence, and acceptance criteria. Do not close findings without verification."
+  },
+  "loop2": {
+    "iterations": 30,
+    "output": "docs/bugs.md",
+    "prompt": "Explore the application end-to-end using browser and automation tools. For each feature, identify real usage bugs. Record steps to reproduce, expected behavior, actual behavior, and severity. Do not close findings without verification."
+  },
+  "loop3": {
+    "iterations": 30,
+    "output": "docs/regressions.md",
+    "prompt": "Run the existing regression suite and previously verified workflows. Detect regressions caused by recent fixes. Record failing cases with steps, expected behavior, actual behavior, and source. If behavior intentionally changed, update the case instead of closing it."
+  },
+  "build": {
+    "commands": ["npm run build"],
+    "testCommands": ["npm run test"],
+    "typeCheckCommands": ["npx tsc --noEmit"],
+    "lintCommands": ["npm run lint"]
+  },
+  "release": {
+    "dir": "releases",
+    "currentVersion": "1.0.0"
+  },
+  "domains": [],
+  "invariants": [
+    "Security: no hard-coded secrets, no exposed credentials",
+    "Error handling: no silent swallowed exceptions",
+    "Persistence: validated inputs, transactions where appropriate",
+    "External services: timeouts, retries, and fallbacks handled"
+  ],
+  "severityPolicy": {
+    "highAndMediumMustBeClosed": true,
+    "lowRequiresExplicitApproval": true
+  },
+  "regression": {
+    "retireAfterVersions": 3,
+    "archiveFile": "docs/regressions-archive.md"
+  }
+}
