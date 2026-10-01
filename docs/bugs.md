@@ -1,4 +1,18 @@
 # Bugs
+Loop 2 browser validation findings (Sprint 7 SQMG Loop 1/2 pass).
+
+| ID | Status | Severity | Area | Source | Evidence | Steps | Expected | Actual | Fix Note |
+|---|---|---|---|---|---|---|---|---|---|
+| BUG-004 | CLOSED | HIGH | ModelsPage.tsx | Browser | download row | Open Models > Search > Files | button always visible | button overflowed off-phone shell | made select flex-basis 0 with wrap, button wrapped in column |
+| BUG-005 | CLOSED | MEDIUM | themes.css | Browser | viewport > 450px | open desktop browser | tabbar edges aligned to phone shell | right edge exceeded phone shell by ~4px | centered fixed tabbar with left 50% + translateX(-50%) |
+| BUG-006 | CLOSED | MEDIUM | SearchPage.tsx | Browser | search tab | tap Go with query | search executes | nothing happened; id missing | wired Go button to search trigger and added missing input id |
+| BUG-007 | CLOSED | MEDIUM | ModelsPage.tsx | Browser | downloads tab | start model download | cancel option | no cancel control | added Cancel button + cancelIds tracking + handleCancel |
+| BUG-008 | CLOSED | MEDIUM | models.ts | Code | listCatalogue | load catalogue with downloads | hide downloaded repos | catalogue showed already downloaded entries | compare against downloaded repo names instead of full download ids |
+| BUG-009 | CLOSED | LOW | ModelsPage.tsx | Browser | catalogue tab | fail catalogue load | user sees error | silent empty state | surface catalogue load errors in page error state |
+| BUG-010 | CLOSED | MEDIUM | DMsPage.tsx | Browser | inbox | tap + New DM | recipient search flow | opened generic search posts tab | route to /search?tab=personas with SearchPage query param handling |
+| BUG-011 | CLOSED | LOW | NotificationsPage.tsx | Browser | alerts | inspect quiet-hours controls | labeled time inputs | inputs had no labels | wrapped time inputs in labels with accessible text |
+
+All Loop 2 findings are now CLOSED after fixes and validation (`npm run check`, `npm test`, `npm run build`).
 
 Use this template for Loop 2 validation findings.
 

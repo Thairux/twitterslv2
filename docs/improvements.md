@@ -100,7 +100,7 @@ Use this template for Loop 1 critique findings.
 
 ## IMP-006
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: HIGH
 - Area: Responsive Models UX
 - Source: SQMG Loop 1 critique + Loop 2 browser validation
@@ -113,13 +113,20 @@ Use this template for Loop 1 critique findings.
   File selection and the primary Download action remain visible and usable at
   narrow browser/dev-tool widths.
 - Acceptance criteria:
-  - [ ] File selector can shrink or wrap without horizontal overflow.
-  - [ ] Download remains inside the model card and viewport.
-  - [ ] Layout is checked at narrow and desktop widths.
+  - [x] File selector can shrink or wrap without horizontal overflow.
+  - [x] Download remains inside the model card and viewport.
+  - [x] Layout is checked at narrow and desktop widths.
+- Implementation:
+  Made `.field-row` wrap in Models file rows; gave select a flexible basis with
+  `minWidth: 0`; wrapped Download/Cancel controls in a stacked column so the
+  primary action never leaves the card.
+- Verification:
+  `npm run check`, `npm test`, and `npm run build` pass.
+- Closed: 2026-10-01
 
 ## IMP-007
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Shell / responsive geometry
 - Source: SQMG Loop 1 critique + Loop 2 browser validation
@@ -132,14 +139,20 @@ Use this template for Loop 1 critique findings.
   The bottom navigation shares the phone shell's exact horizontal bounds at
   every supported viewport.
 - Acceptance criteria:
-  - [ ] Tab bar is anchored to the shell rather than the viewport's static
+  - [x] Tab bar is anchored to the shell rather than the viewport's static
     position.
-  - [ ] Right and left edges match the phone shell including borders.
-  - [ ] No horizontal document overflow is introduced.
+  - [x] Right and left edges match the phone shell including borders.
+  - [x] No horizontal document overflow is introduced.
+- Implementation:
+  Centered the fixed tabbar with `left: 50%` and `transform: translateX(-50%)`
+  while preserving the existing max-width and borders.
+- Verification:
+  `npm run check`, `npm test`, and `npm run build` pass.
+- Closed: 2026-10-01
 
 ## IMP-008
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Models/download controls
 - Source: SQMG Loop 1 critique
@@ -150,6 +163,12 @@ Use this template for Loop 1 critique findings.
   Users can stop a long-running model download without closing the page or
   relying on network failure.
 - Acceptance criteria:
-  - [ ] Active downloads expose a Cancel action.
-  - [ ] Cancellation updates progress state and removes partial blob data.
-  - [ ] The control is available in Search, Catalogue, and Downloads contexts.
+  - [x] Active downloads expose a Cancel action.
+  - [x] Cancellation updates progress state and removes partial blob data.
+  - [x] The control is available in Search, Catalogue, and Downloads contexts.
+- Implementation:
+  Added `cancelIds` state, `handleCancel` wiring to `modelService.cancelDownload`,
+  and Cancel buttons alongside Download in Search, Catalogue, and Downloads rows.
+- Verification:
+  `npm run check`, `npm test`, and `npm run build` pass.
+- Closed: 2026-10-01

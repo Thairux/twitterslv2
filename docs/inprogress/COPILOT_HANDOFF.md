@@ -4,11 +4,7 @@
 - Project: `twitterslv2`
 - Session ID: `ses_f17a252aaffemPkN90WfPEEFe8`
 - Session transcript: OpenCode session store for `ses_f17a252aaffemPkN90WfPEEFe8`; repo-local note at `docs/inprogress/session-2026-09-28-s0.md`
-- Status: Loop 1 complete, Loop 2 automated verification green, one manual Loop 2 item remains
-
-## Goal
-Finish Loop 2/3 for the models/downloads/catalogue/search SQMG gate and close
-the remaining manual verification for the Models page.
+- Status: Loop 1/2 complete, Loop 1/2 findings fixed and closed, Loop 3 regression still deferred
 
 ## Documentation alignment
 
@@ -64,19 +60,34 @@ invariants rules in force.
   labels).
 - No application code was changed.
 
+## Applied fixes — 2026-10-01
+
+- `src/pages/ModelsPage.tsx` — wrapped overflowing select+Download rows,
+  added visible Cancel controls for active downloads, and surfaced catalogue
+  load errors.
+- `src/pages/SearchPage.tsx` — wired Go button to trigger search; added `tab`
+  query-param support for the New DM recipient flow.
+- `src/pages/DMsPage.tsx` — changed `+ New DM` to open persona search.
+- `src/pages/NotificationsPage.tsx` — added accessible labels for quiet-hours
+  time inputs.
+- `src/styles/themes.css` — centered the fixed tabbar within the phone shell.
+- `src/lib/api/models.ts` — fixed catalogue deduplication to use downloaded
+  repo names instead of full download IDs.
+
+## Verification after fixes
+
+- `npm run check` — passed.
+- `npm test` — 99 passed.
+- `npm run build` — passed.
+- All Loop 1/2 findings moved to CLOSED in `docs/bugs.md` and
+  `docs/improvements.md`.
+
 ## What Copilot Should Do Next
-1. **Resolve or triage the new OPEN findings**
-   - `BUG-004` / `IMP-006`: responsive selector and Download overflow
-   - `BUG-005` / `IMP-007`: bottom tab shell alignment
-   - `BUG-006`–`BUG-009` / `IMP-008`: action and state-handling gaps
-
-2. **Loop 3 regression**
-   - Deferred; do not run until the discovery findings are triaged.
-
-3. **Polish if needed**
+1. **Loop 3 regression**
+   - Still deferred per original instruction; run only if requested.
+2. **Polish if needed**
    - Replace any remaining broken catalogue entries if HF repos change
    - Add small-browser retry/backoff if network flakiness shows up in manual testing
-   - Update `releases/sqmg-models-1.0.0/sqmg-report.md` with final Loop 2/3 outcomes
 
 ## Constraints
 - Stay within the repo’s four-layer architecture.

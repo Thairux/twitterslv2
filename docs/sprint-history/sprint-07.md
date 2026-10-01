@@ -31,16 +31,27 @@ recorded; automated verification is green.
 - `MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF`
 - `QuantFactory/Meta-Llama-3.1-8B-Instruct-GGUF`
 
-## Discovery-only SQMG pass — 2026-10-01
+## SQMG fixes applied — 2026-10-01
 
-- Loop 1 critique and Loop 2 browser validation completed.
-- Loop 3 regression intentionally skipped.
-- No source code changed.
-- New findings are OPEN in `docs/improvements.md` (`IMP-006`–`IMP-008`) and
-  `docs/bugs.md` (`BUG-004`–`BUG-011`).
-- The two reported layout defects were reproduced with browser measurements.
-- Additional feature exploration found the New DM navigation gap and
-  unlabeled quiet-hours controls.
+- `src/pages/ModelsPage.tsx` — wrapped overflowing file selector/button rows,
+  added visible Cancel control for active downloads, and surfaced catalogue
+  load errors.
+- `src/pages/SearchPage.tsx` — wired Go button to trigger search and added
+  `tab` query-param support for New DM recipient flow.
+- `src/pages/DMsPage.tsx` — changed `+ New DM` to open persona search.
+- `src/pages/NotificationsPage.tsx` — added accessible labels for quiet-hours
+  time inputs.
+- `src/styles/themes.css` — centered the fixed tabbar within the phone shell.
+- `src/lib/api/models.ts` — fixed catalogue deduplication to compare against
+  downloaded repo names, not full download ids.
+
+## SQMG verification after fixes — 2026-10-01
+
+- `npm run check` — passed.
+- `npm test` — passed: 3 files, 99 tests.
+- `npm run build` — passed.
+- All Loop 1/2 findings moved to CLOSED in `docs/improvements.md` and
+  `docs/bugs.md`.
 
 ## Handoff
 
