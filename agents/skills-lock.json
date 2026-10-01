@@ -1,0 +1,37 @@
+{
+  "skills": [
+    "aboutrepo",
+    "architecture",
+    "invariants",
+    "capacitor-frontend",
+    "sqlite-persistence",
+    "model-provider",
+    "persona-engine",
+    "feed-engine",
+    "dm-engine",
+    "background-notify",
+    "design-tokens",
+    "testing-strategy",
+    "definition-of-done",
+    "handoff",
+    "gap-critique",
+    "demo-source-of-truth"
+  ],
+  "rules": [
+    "00-filesystem-truth.md",
+    "01-aboutrepo-mandatory.md",
+    "02-dependency-direction.md",
+    "03-new-file-and-sqlite-truth.md",
+    "04-domain-purity.md",
+    "05-model-provider-contract.md",
+    "06-friend-invariant.md",
+    "07-secrets-consent.md",
+    "08-design-tokens.md",
+    "09-demo-source-of-truth.md",
+    "10-verify-before-done.md",
+    "11-session-continuity.md"
+  ],
+  "hooks": ["agents/hooks/post-file-change-hook.js"],
+  "version": "1.0.0",
+  "lastUpdated": "2026-09-28"
+}
