@@ -51,18 +51,24 @@ invariants rules in force.
 - Dev server: confirmed live on port 5173
 - Browser: Models page renders, Catalogue tab loads repos, Files button enumerates GGUF files
 
+## SQMG discovery-only pass — 2026-10-01
+
+- Loop 1 critique and Loop 2 browser validation were run.
+- Loop 3 regression was intentionally not run per user instruction.
+- Reproduced OPEN `BUG-004` (Download pushed outside the card/viewport) and
+  `BUG-005` (bottom tab bar crosses the phone shell's right boundary).
+- Additional OPEN findings: `BUG-006` through `BUG-009` and `IMP-006` through
+  `IMP-008`; see `docs/bugs.md` and `docs/improvements.md`.
+- No application code was changed.
+
 ## What Copilot Should Do Next
-1. **Manual Loop 2 browser pass**
-   - Open `http://localhost:5173/#/models`
-   - Switch to **Catalogue**, verify all 4 repos load without JS errors
-   - Click **Files** for each repo and verify GGUF file list appears
-   - Select a small GGUF file, click **Download**, watch progress bar
-   - Cancel/error path: verify partial cleanup and Resume button behavior
-   - Switch to **Downloads**, verify record appears and can be deleted
+1. **Resolve or triage the new OPEN findings**
+   - `BUG-004` / `IMP-006`: responsive selector and Download overflow
+   - `BUG-005` / `IMP-007`: bottom tab shell alignment
+   - `BUG-006`–`BUG-009` / `IMP-008`: action and state-handling gaps
 
 2. **Loop 3 regression**
-   - Re-run `npm run check`, `npm test`, `npm run test:e2e`, `npm run build`
-   - If any failure, fix and rerun until green
+   - Deferred; do not run until the discovery findings are triaged.
 
 3. **Polish if needed**
    - Replace any remaining broken catalogue entries if HF repos change

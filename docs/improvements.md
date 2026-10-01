@@ -97,3 +97,59 @@ Use this template for Loop 1 critique findings.
 - Verification:
   `npm run test:e2e` passes.
 - Closed: 2026-09-29
+
+## IMP-006
+
+- Status: OPEN
+- Severity: HIGH
+- Area: Responsive Models UX
+- Source: SQMG Loop 1 critique + Loop 2 browser validation
+- Evidence: Models catalogue uses a horizontal `.field-row` containing a
+  long-intrinsic-width `<select>` and Download button. At the dev browser
+  viewport (`628x730`), the selector reached `x=539` and the Download button
+  reached `x=658`, outside the model card (`right=495`) and phone shell
+  (`right=531`).
+- Expected:
+  File selection and the primary Download action remain visible and usable at
+  narrow browser/dev-tool widths.
+- Acceptance criteria:
+  - [ ] File selector can shrink or wrap without horizontal overflow.
+  - [ ] Download remains inside the model card and viewport.
+  - [ ] Layout is checked at narrow and desktop widths.
+
+## IMP-007
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Shell / responsive geometry
+- Source: SQMG Loop 1 critique + Loop 2 browser validation
+- Evidence: `.tabbar` is `position: fixed` with `width: 100%` and no explicit
+  left/right anchoring. In the browser pass it measured
+  `left=85.4,right=535.4,width=450`, while `.phone` measured
+  `left=81.4,right=531.4`; the navigation therefore crosses the shell's right
+  boundary by 4px.
+- Expected:
+  The bottom navigation shares the phone shell's exact horizontal bounds at
+  every supported viewport.
+- Acceptance criteria:
+  - [ ] Tab bar is anchored to the shell rather than the viewport's static
+    position.
+  - [ ] Right and left edges match the phone shell including borders.
+  - [ ] No horizontal document overflow is introduced.
+
+## IMP-008
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Models/download controls
+- Source: SQMG Loop 1 critique
+- Evidence: `ModelService.cancelDownload()` exists, but `ModelsPage` exposes
+  Download, Resume, and Delete only; there is no user-visible Cancel action
+  while a model is downloading.
+- Expected:
+  Users can stop a long-running model download without closing the page or
+  relying on network failure.
+- Acceptance criteria:
+  - [ ] Active downloads expose a Cancel action.
+  - [ ] Cancellation updates progress state and removes partial blob data.
+  - [ ] The control is available in Search, Catalogue, and Downloads contexts.

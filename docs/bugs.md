@@ -58,3 +58,113 @@ Use this template for Loop 2 validation findings.
 - Verification:
   `npm run test:e2e` passes.
 - Closed: 2026-09-29
+
+## BUG-004
+
+- Status: OPEN
+- Severity: HIGH
+- Area: Models / catalogue download
+- Source: User report + SQMG Loop 2 browser exploration
+- Evidence: On `http://localhost:5173/#/models`, Catalogue → Files, the
+  selected GGUF `<select>` overflowed its card and measured
+  `right=539` while the phone shell ended at `right=531`. The Download button
+  followed at `left=547,right=658`, so it was outside the visible dev browser
+  area and could not be used without horizontal scrolling.
+- Steps to reproduce:
+  1. Open the app in the browser dev view at a narrow viewport.
+  2. Open Models and select Catalogue.
+  3. Click Files on a catalogue entry.
+  4. Inspect the file selector and Download action.
+- Expected: The selector and Download action fit within the model card and
+  remain visible.
+- Actual: The long selector's intrinsic width pushes Download beyond the card
+  and viewport.
+- Fix: Not applied per user instruction.
+
+## BUG-005
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Shell / bottom navigation
+- Source: User report + SQMG Loop 2 browser exploration
+- Evidence: In the same browser pass, `.phone` ended at `right=531.4` while
+  `.tabbar` ended at `right=535.4`, crossing the shell boundary by 4px. The
+  tab bar is fixed to the viewport/static position rather than anchored to the
+  phone shell.
+- Steps to reproduce:
+  1. Open the app in the browser dev view.
+  2. Navigate to Models or any page with enough content to scroll.
+  3. Compare the bottom tab's right edge with the phone shell border.
+- Expected: Bottom navigation aligns exactly with both shell borders.
+- Actual: Bottom navigation extends past the right shell border.
+- Fix: Not applied per user instruction.
+
+## BUG-006
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Search controls
+- Source: SQMG Loop 1 critique + source inspection
+- Evidence: `SearchPage`'s Go button calls
+  `document.getElementById('search-input')?.focus()`, but the rendered search
+  input has no `id="search-input"`. The button therefore has no observable
+  effect.
+- Steps to reproduce:
+  1. Open Search.
+  2. Enter a query.
+  3. Click Go.
+- Expected: Go focuses the search field or explicitly triggers the search.
+- Actual: No element is found and no action occurs.
+- Fix: Not applied per user instruction.
+
+## BUG-007
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Models/download lifecycle
+- Source: SQMG Loop 1 critique + source inspection
+- Evidence: `ModelService` implements `cancelDownload()`, but
+  `ModelsPage` never renders or invokes a Cancel control. A download in
+  progress can only finish or fail; the user cannot intentionally stop it.
+- Steps to reproduce:
+  1. Start a model download from Search or Catalogue.
+  2. While progress is active, inspect the available actions.
+- Expected: A Cancel action is available and clears the partial download
+  according to the service contract.
+- Actual: No Cancel action is shown.
+- Fix: Not applied per user instruction.
+
+## BUG-008
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Models / catalogue state
+- Source: SQMG Loop 1 critique + source inspection
+- Evidence: `listCatalogue()` compares downloaded IDs against catalogue repo IDs,
+  while completed download IDs are formed as `repoId/filename`. The comparison
+  cannot match a completed file to its catalogue repo, so downloaded repos can
+  remain listed in Catalogue.
+- Steps to reproduce:
+  1. Download a GGUF file from a catalogue repo.
+  2. Return to or reload Catalogue.
+  3. Inspect the previously downloaded repository.
+- Expected: Catalogue state clearly reflects the downloaded file/repository.
+- Actual: The repo-level filter uses incompatible identifier formats and may
+  leave the repo listed.
+- Fix: Not applied per user instruction.
+
+## BUG-009
+
+- Status: OPEN
+- Severity: LOW
+- Area: Models / catalogue error handling
+- Source: SQMG Loop 1 critique + source inspection
+- Evidence: Catalogue loading catches `listCatalogue()` failures and replaces
+  the catalogue with an empty array without setting the page's `error` state.
+- Steps to reproduce:
+  1. Open Catalogue while the HF request fails or is unavailable.
+  2. Observe the Models page.
+- Expected: The page explains that catalogue loading failed and offers retry
+  guidance.
+- Actual: The catalogue appears empty with no error explanation.
+- Fix: Not applied per user instruction.
