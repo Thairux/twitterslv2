@@ -1,0 +1,34 @@
+/* TSL design tokens — verbatim from alldemos/ocdemo/ (demo-source-of-truth).
+   No ad-hoc colors/radii/shadows in components; use these variables. */
+:root {
+  --font-mono: 'Courier New', Courier, monospace;
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --border-width: 4px;
+  --radius: 0px;
+}
+
+[data-theme='light'] {
+  --bg: #ffdf00;
+  --card: #ffffff;
+  --border: #000000;
+  --text: #000000;
+  --text-dim: #333333;
+  --accent: #ff00ff;
+  --accent-hover: #cc00cc;
+  --shadow: 4px 4px 0px #000000;
+  --nav-bg: #ffffff;
+  --thread-line: #000000;
+}
+
+[data-theme='dark'] {
+  --bg: #000000;
+  --card: #111111;
+  --border: #00ffcc;
+  --text: #00ffcc;
+  --text-dim: #009977;
+  --accent: #ff00ff;
+  --accent-hover: #ff66ff;
+  --shadow: 4px 4px 0px #00ffcc;
+  --nav-bg: #111111;
+  --thread-line: #00ffcc;
+}

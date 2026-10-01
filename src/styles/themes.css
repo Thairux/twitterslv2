@@ -1,0 +1,344 @@
+/* TSL theme shell classes — ported from alldemos/ocdemo/ shell.
+   Sprint 1 fleshes out per-screen components against the demo. */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.phone {
+  width: 100%;
+  max-width: 450px;
+  background: var(--bg);
+  border-left: var(--border-width) solid var(--border);
+  border-right: var(--border-width) solid var(--border);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: var(--accent);
+  padding: 4px 8px;
+  border: var(--border-width) solid var(--border);
+}
+
+.sync-status {
+  font-size: 10px;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  padding: 2px 4px;
+  margin-left: 4px;
+}
+
+.content-area {
+  flex: 1;
+  padding: 16px;
+  padding-bottom: 80px;
+  overflow-y: auto;
+}
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  max-width: 450px;
+  background: var(--nav-bg);
+  border-left: var(--border-width) solid var(--border);
+  border-right: var(--border-width) solid var(--border);
+  border-bottom: var(--border-width) solid var(--border);
+  border-top: var(--border-width) solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+  z-index: 50;
+}
+
+.tab {
+  background: none;
+  border: none;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 8px;
+  text-decoration: none;
+  color: var(--text-dim);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom: var(--border-width) solid var(--accent);
+}
+
+.thread {
+  background: var(--card);
+  border: var(--border-width) solid var(--border);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+.msg {
+  background: var(--card);
+  border: var(--border-width) solid var(--border);
+  padding: 10px;
+  margin-bottom: 12px;
+  width: 80%;
+  box-shadow: var(--shadow);
+}
+
+.post {
+  background: var(--card);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.meter-box {
+  font-size: 12px;
+  border: var(--border-width) solid var(--accent);
+  padding: 4px 8px;
+  color: var(--accent);
+  background: var(--card);
+  box-shadow: 2px 2px 0px var(--accent);
+  white-space: nowrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: var(--card);
+  color: var(--text);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--border);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--card);
+  border-bottom: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.input-field {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--card);
+  color: var(--text);
+  border: var(--border-width) solid var(--border);
+  box-shadow: 2px 2px 0px var(--border);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 2px 2px 0px var(--accent);
+}
+
+.avatar {
+  border-radius: 50%;
+  border: var(--border-width) solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.help-text {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+
+.notification-item {
+  background: var(--card);
+  border: var(--border-width) solid var(--border);
+  padding: 12px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow);
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.status-bar b {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.feed-tabs {
+  display: flex;
+  border-bottom: var(--border-width) solid var(--border);
+  margin-bottom: 16px;
+}
+.feed-tabs button {
+  flex: 1;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 12px;
+  font-weight: bold;
+  color: var(--text-dim);
+  font-family: inherit;
+  cursor: pointer;
+}
+.feed-tabs button.active {
+  border-bottom: 4px solid var(--accent);
+  color: var(--accent);
+}
+.tab-pane {
+  display: none;
+}
+.tab-pane.active-pane {
+  display: block;
+}
+.model-card {
+  background: var(--card);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.meta {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.post {
+  background: var(--card);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.post-body {
+  color: var(--text);
+  text-decoration: none;
+}
+.post-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.time {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.dl-prog {
+  height: 8px;
+  background: var(--accent);
+  margin-top: 4px;
+  width: 0%;
+  transition: width 0.2s;
+}
+.file-item {
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
