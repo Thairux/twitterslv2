@@ -22,6 +22,7 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [cancelIds, setCancelIds] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<Record<string, { downloadedBytes: number; sizeBytes: number; status: string; filename?: string }>>({});
   const [error, setError] = useState('');
   const [catalogue, setCatalogue] = useState<Array<{ id: string; author: string; modelName: string; siblings?: Array<{ filename: string; size: number }> }>>([]);
@@ -45,7 +46,10 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
     if (tab === 'cat') {
       modelService.listCatalogue()
         .then(setCatalogue)
-        .catch(() => setCatalogue([]));
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'Failed to load catalogue');
+          setCatalogue([]);
+        });
     }
   }, [tab, modelService]);
 
@@ -111,6 +115,7 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
     if (!filename) return;
     const downloadId = `${repoId}/${filename}`;
     setDownloading(downloadId);
+    setCancelIds((prev) => new Set(prev).add(downloadId));
     setError('');
     try {
       await modelService.downloadModel(
@@ -130,12 +135,18 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
       setError(e instanceof Error ? e.message : 'Download failed');
     } finally {
       setDownloading(null);
+      setCancelIds((prev) => {
+        const next = new Set(prev);
+        next.delete(downloadId);
+        return next;
+      });
     }
   }
 
   async function handleResume(repoId: string, filename: string) {
     const downloadId = `${repoId}/${filename}`;
     setDownloading(downloadId);
+    setCancelIds((prev) => new Set(prev).add(downloadId));
     setError('');
     try {
       await modelService.downloadModel(
@@ -155,6 +166,35 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
       setError(e instanceof Error ? e.message : 'Resume failed');
     } finally {
       setDownloading(null);
+      setCancelIds((prev) => {
+        const next = new Set(prev);
+        next.delete(downloadId);
+        return next;
+      });
+    }
+  }
+
+  async function handleCancel(repoId: string, filename: string) {
+    const downloadId = `${repoId}/${filename}`;
+    setError('');
+    try {
+      await modelService.cancelDownload(downloadId);
+      setProgressMap((prev) => {
+        const next = { ...prev };
+        if (next[downloadId]) {
+          next[downloadId] = { ...next[downloadId], status: 'cancelled' };
+        }
+        return next;
+      });
+    } catch {
+      setError('Cancel failed');
+    } finally {
+      setDownloading(null);
+      setCancelIds((prev) => {
+        const next = new Set(prev);
+        next.delete(downloadId);
+        return next;
+      });
     }
   }
 
@@ -233,11 +273,12 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                     ) : (
                       <>
                         <label className="meta">GGUF file</label>
-                        <div className="field-row" style={{ marginTop: 4, marginBottom: 8 }}>
+                        <div className="field-row" style={{ marginTop: 4, marginBottom: 8, flexWrap: 'wrap' }}>
                           <select
                             value={selectedFile}
                             onChange={(e) => setSelectedFile(e.target.value)}
                             className="input-field"
+                            style={{ flex: '1 1 0', minWidth: 0 }}
                           >
                             {files.map((f) => (
                               <option key={f.filename} value={f.filename}>
@@ -245,18 +286,29 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                               </option>
                             ))}
                           </select>
-                          <button
-                            className="btn"
-                            onClick={() => handleDownload(r.id)}
-                            disabled={downloading === `${r.id}/${selectedFile}`}
-                          >
-                            {downloading === `${r.id}/${selectedFile}` ? '...' : 'Download'}
-                          </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <button
+                              className="btn"
+                              onClick={() => handleDownload(r.id)}
+                              disabled={downloading === `${r.id}/${selectedFile}`}
+                            >
+                              {downloading === `${r.id}/${selectedFile}` ? '...' : 'Download'}
+                            </button>
+                            {cancelIds.has(`${r.id}/${selectedFile}`) && downloading === `${r.id}/${selectedFile}` && (
+                              <button
+                                className="btn"
+                                style={{ padding: '2px 6px', fontSize: 11 }}
+                                onClick={() => handleCancel(r.id, selectedFile)}
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {(() => {
                           const key = `${r.id}/${selectedFile}`;
                           const prog = progressMap[key];
-                          if (!prog || prog.status === 'complete') return null;
+                          if (!prog || prog.status === 'complete' || prog.status === 'cancelled') return null;
                           const pct = prog.sizeBytes > 0 ? Math.min(100, (prog.downloadedBytes / prog.sizeBytes) * 100) : 0;
                           return (
                             <div style={{ marginTop: 8 }}>
@@ -266,8 +318,9 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                               <div className="meta" style={{ marginTop: 4 }}>
                                 {formatMb(prog.downloadedBytes)} / {formatMb(prog.sizeBytes)} MB ({pct.toFixed(0)}%)
                                 {prog.status === 'error' && ' — interrupted'}
+                                {prog.status === 'cancelled' && ' — cancelled'}
                               </div>
-                              {prog.status === 'error' && (
+                              {(prog.status === 'error' || prog.status === 'cancelled') && (
                                 <button className="btn" style={{ padding: '2px 6px', fontSize: 11, marginTop: 4 }} onClick={() => handleResume(r.id, selectedFile)}>
                                   Resume
                                 </button>
@@ -311,11 +364,12 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                   ) : (
                     <>
                       <label className="meta">GGUF file</label>
-                      <div className="field-row" style={{ marginTop: 4, marginBottom: 8 }}>
+                      <div className="field-row" style={{ marginTop: 4, marginBottom: 8, flexWrap: 'wrap' }}>
                         <select
                           value={selectedFile}
                           onChange={(e) => setSelectedFile(e.target.value)}
                           className="input-field"
+                          style={{ flex: '1 1 0', minWidth: 0 }}
                         >
                           {files.map((f) => (
                             <option key={f.filename} value={f.filename}>
@@ -323,18 +377,29 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                             </option>
                           ))}
                         </select>
-                        <button
-                          className="btn"
-                          onClick={() => handleDownload(c.id)}
-                          disabled={downloading === `${c.id}/${selectedFile}`}
-                        >
-                          {downloading === `${c.id}/${selectedFile}` ? '...' : 'Download'}
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <button
+                            className="btn"
+                            onClick={() => handleDownload(c.id)}
+                            disabled={downloading === `${c.id}/${selectedFile}`}
+                          >
+                            {downloading === `${c.id}/${selectedFile}` ? '...' : 'Download'}
+                          </button>
+                          {cancelIds.has(`${c.id}/${selectedFile}`) && downloading === `${c.id}/${selectedFile}` && (
+                            <button
+                              className="btn"
+                              style={{ padding: '2px 6px', fontSize: 11 }}
+                              onClick={() => handleCancel(c.id, selectedFile)}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {(() => {
                         const key = `${c.id}/${selectedFile}`;
                         const prog = progressMap[key];
-                        if (!prog || prog.status === 'complete') return null;
+                        if (!prog || prog.status === 'complete' || prog.status === 'cancelled') return null;
                         const pct = prog.sizeBytes > 0 ? Math.min(100, (prog.downloadedBytes / prog.sizeBytes) * 100) : 0;
                         return (
                           <div style={{ marginTop: 8 }}>
@@ -344,8 +409,9 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                             <div className="meta" style={{ marginTop: 4 }}>
                               {formatMb(prog.downloadedBytes)} / {formatMb(prog.sizeBytes)} MB ({pct.toFixed(0)}%)
                               {prog.status === 'error' && ' — interrupted'}
+                              {prog.status === 'cancelled' && ' — cancelled'}
                             </div>
-                            {prog.status === 'error' && (
+                            {(prog.status === 'error' || prog.status === 'cancelled') && (
                               <button className="btn" style={{ padding: '2px 6px', fontSize: 11, marginTop: 4 }} onClick={() => handleResume(c.id, selectedFile)}>
                                 Resume
                               </button>
@@ -380,7 +446,7 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
               </div>
               {(() => {
                 const prog = progressMap[d.id];
-                if (!prog || prog.status === 'complete') return null;
+                if (!prog || prog.status === 'complete' || prog.status === 'cancelled') return null;
                 const pct = prog.sizeBytes > 0 ? Math.min(100, (prog.downloadedBytes / prog.sizeBytes) * 100) : 0;
                 return (
                   <div style={{ marginTop: 8 }}>
@@ -390,8 +456,9 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                     <div className="meta" style={{ marginTop: 4 }}>
                       {formatMb(prog.downloadedBytes)} / {formatMb(prog.sizeBytes)} MB ({pct.toFixed(0)}%)
                       {prog.status === 'error' && ' — interrupted'}
+                      {prog.status === 'cancelled' && ' — cancelled'}
                     </div>
-                    {prog.status === 'error' && (
+                    {(prog.status === 'error' || prog.status === 'cancelled') && (
                       <button className="btn" style={{ padding: '2px 6px', fontSize: 11, marginTop: 4 }} onClick={() => handleResume(d.repo, prog.filename ?? '')}>
                         Resume
                       </button>

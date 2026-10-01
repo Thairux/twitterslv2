@@ -30,7 +30,7 @@ export function DMsPage() {
     <div className="content-area">
       <div className="status-bar">
         <h2 className="page-title" style={{ margin: 0, border: 'none', padding: 0 }}>Inbox</h2>
-        <button className="btn" onClick={() => navigate('/search')}>+ New DM</button>
+        <button className="btn" onClick={() => navigate('/search?tab=personas')}>+ New DM</button>
       </div>
       {loading && <p className="meta">Loading…</p>}
       {!loading && threads.length === 0 && (

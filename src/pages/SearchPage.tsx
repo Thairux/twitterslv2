@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SocialStore } from '../lib/api/social-store';
 import type { DmStore } from '../lib/api/dm-store';
 import type { Post } from '../lib/domain/post';
@@ -19,12 +19,16 @@ type SearchTab = 'posts' | 'personas' | 'tags' | 'dms';
 export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
   const { store } = useApi();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<SearchTab>('posts');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as SearchTab | null) ?? 'posts';
+  const safeInitialTab: SearchTab = ['posts', 'personas', 'tags', 'dms'].includes(initialTab) ? initialTab : 'posts';
+  const [tab, setTab] = useState<SearchTab>(safeInitialTab);
   const [query, setQuery] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
   const [personas, setPersonas] = useState<Array<{ id: string; handle: string; displayName: string }>>([]);
   const [tags, setTags] = useState<Array<{ tag: string; count: number }>>([]);
   const [dms, setDms] = useState<Array<{ id: string; threadId: string; senderId: string; body: string; createdAt: string }>>([]);
+  const [searchTrigger, setSearchTrigger] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -68,7 +72,7 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [query, tab, socialStore, dmStore]);
+  }, [query, tab, searchTrigger, socialStore, dmStore]);
 
   const handleQuote = (postId: string) => {
     navigate(`/compose?quote=${encodeURIComponent(postId)}`);
@@ -82,13 +86,14 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
       <h2 className="page-title">Search</h2>
       <div className="field-row" style={{ marginBottom: 16 }}>
         <input
+          id="search-input"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search..."
           className="input-field"
         />
-        <button className="btn" onClick={() => document.getElementById('search-input')?.focus()}>Go</button>
+        <button className="btn" onClick={() => setSearchTrigger((n) => n + 1)}>Go</button>
       </div>
       <div className="feed-tabs">
         {(['posts', 'personas', 'tags', 'dms'] as SearchTab[]).map((t) => (

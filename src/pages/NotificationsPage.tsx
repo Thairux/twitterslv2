@@ -132,19 +132,27 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
       </label>
       <br/><br/>
       <div className="field-row">
-        <input
-          type="time"
-          value={quietStart}
-          onChange={(e) => setQuietStart(e.target.value)}
-          className="input-field"
-        />
-        <span className="meta">to</span>
-        <input
-          type="time"
-          value={quietEnd}
-          onChange={(e) => setQuietEnd(e.target.value)}
-          className="input-field"
-        />
+        <label style={{ flex: 1 }}>
+          <span className="meta">Quiet start</span>
+          <input
+            type="time"
+            value={quietStart}
+            onChange={(e) => setQuietStart(e.target.value)}
+            className="input-field"
+            style={{ marginTop: 4 }}
+          />
+        </label>
+        <span className="meta" style={{ alignSelf: 'center' }}>to</span>
+        <label style={{ flex: 1 }}>
+          <span className="meta">Quiet end</span>
+          <input
+            type="time"
+            value={quietEnd}
+            onChange={(e) => setQuietEnd(e.target.value)}
+            className="input-field"
+            style={{ marginTop: 4 }}
+          />
+        </label>
       </div>
       <p className="meta" style={{ marginTop: 8 }}>Quiet hours are stored locally and applied in-app.</p>
     </div>
