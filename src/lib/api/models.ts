@@ -32,11 +32,11 @@ export class ModelService {
     ];
 
     const downloads = await this.store.query<DownloadedModel>('SELECT id, repo, path FROM downloaded_models');
-    const downloadedIds = new Set(downloads.map((d) => d.id));
+    const downloadedRepos = new Set(downloads.map((d) => d.repo));
 
     const validated: CatalogueEntry[] = [];
     for (const entry of raw) {
-      if (downloadedIds.has(entry.id)) continue;
+      if (downloadedRepos.has(entry.id)) continue;
       try {
         const parsed = CatalogueEntrySchema.parse(entry);
         try {
