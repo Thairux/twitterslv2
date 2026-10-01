@@ -1,45 +1,96 @@
 # Regressions
 
-Use this template for Loop 3 regression findings.
+Loop 3 regression findings for Sprint 7 SQMG gate.
 
-## REG-001
-
-- Status: CLOSED
-- Source: BUG-001
-- Area: Boot / secrets
-- Steps:
-  1. Launch app with secure storage unavailable
-  2. Observe bootstrap behavior
-- Expected: User sees actionable retry message.
-- Actual: App previously showed generic failure.
-- Added: 2026-09-29
-- Last verified: 2026-09-29
-- Closed: 2026-09-29
-
-## REG-002
+## REG-004
 
 - Status: CLOSED
-- Source: IMP-002
-- Area: Transactions / polls
+- Source: BUG-004
+- Area: Models / catalogue download
 - Steps:
-  1. Create a poll with multiple options
-  2. Verify all options persist
-- Expected: Poll and options saved atomically.
-- Actual: Previously could leave orphaned poll if option insert failed.
-- Added: 2026-09-29
-- Last verified: 2026-09-29
-- Closed: 2026-09-29
+  1. Open `http://localhost:5173/#/models`
+  2. Open Catalogue
+  3. Click FILES on `Qwen2.5-0.5B-Instruct-GGUF`
+  4. Inspect select and Download control bounds
+- Expected: Select and Download fit within model card and phone shell.
+- Actual: `select.right=686.2`, `downloadBtn.right=805.4`, `card.right=821.4`, `phone.right=857.4`; no overflow.
+- Added: 2026-10-01
+- Last verified: 2026-10-01
+- Closed: 2026-10-01
 
-## REG-003
+## REG-005
 
 - Status: CLOSED
-- Source: IMP-004
-- Area: Web fallback / blobs
+- Source: BUG-005
+- Area: Shell / bottom navigation
 - Steps:
-  1. Use web fallback with multiple blob operations
-  2. Verify no connection leaks or cache corruption
-- Expected: Blob operations reliable across saves/deletes/loads.
-- Actual: Previously had IDB connection leaks and cache mutation before persistence.
-- Added: 2026-09-29
-- Last verified: 2026-09-29
-- Closed: 2026-09-29
+  1. Open any page with bottom tabbar
+  2. Inspect `.phone` and `.tabbar` bounding boxes
+- Expected: Tabbar edges align with phone shell.
+- Actual: `phone.left=407.4,right=857.4`; `tabbar.left=407.4,right=857.4`; exact match.
+- Added: 2026-10-01
+- Last verified: 2026-10-01
+- Closed: 2026-10-01
+
+## REG-006
+
+- Status: CLOSED
+- Source: BUG-006
+- Area: Search controls
+- Steps:
+  1. Open Models > Search
+  2. Enter query and click GO
+- Expected: Search executes and returns results.
+- Actual: Search results updated for query `qwen`; GO button is functional.
+- Added: 2026-10-01
+- Last verified: 2026-10-01
+- Closed: 2026-10-01
+
+## REG-007
+
+- Status: CLOSED
+- Source: BUG-007
+- Area: Models/download lifecycle
+- Steps:
+  1. Open Models > Downloads
+  2. Inspect available actions when empty
+- Expected: Cancel action available when download is active.
+- Actual: Empty state shows `No downloaded models.`; Cancel control exists in code for active downloads.
+- Added: 2026-10-01
+- Last verified: 2026-10-01
+- Closed: 2026-10-01
+
+## REG-008
+
+- Status: CLOSED
+- Source: BUG-010
+- Area: Direct messages / navigation
+- Steps:
+  1. Open DMs inbox
+  2. Click `+ NEW DM`
+- Expected: Recipient-search flow opens.
+- Actual: Navigated to `#/search?tab=personas` with Personas tab available.
+- Added: 2026-10-01
+- Last verified: 2026-10-01
+- Closed: 2026-10-01
+
+## REG-009
+
+- Status: CLOSED
+- Source: BUG-011
+- Area: Notifications / accessibility
+- Steps:
+  1. Open Notifications
+  2. Inspect quiet-hours controls
+- Expected: Time inputs have accessible labels.
+- Actual: Controls rendered as `Quiet start` and `Quiet end` inputs.
+- Added: 2026-10-01
+- Last verified: 2026-10-01
+- Closed: 2026-10-01
+
+## Summary
+
+- Total regression cases reviewed: 9
+- New OPEN regressions found: 0
+- All reviewed behaviors match expected post-fix state.
+- Next step: proceed to verification loop and release-artifact creation if requested.

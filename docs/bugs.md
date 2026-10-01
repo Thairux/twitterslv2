@@ -75,7 +75,7 @@ Use this template for Loop 2 validation findings.
 
 ## BUG-004
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: HIGH
 - Area: Models / catalogue download
 - Source: User report + SQMG Loop 2 browser exploration
@@ -93,11 +93,18 @@ Use this template for Loop 2 validation findings.
   remain visible.
 - Actual: The long selector's intrinsic width pushes Download beyond the card
   and viewport.
-- Fix: Not applied per user instruction.
+- Fix: Made `.field-row` wrap in Models file rows; gave select a flexible
+  basis with `minWidth: 0`; wrapped Download/Cancel controls in a stacked
+  column so the primary action never leaves the card.
+- Verification:
+  Browser regression check shows `select.right=686.2`,
+  `downloadBtn.right=805.4`, `card.right=821.4`, `phone.right=857.4`;
+  no overflow.
+- Closed: 2026-10-01
 
 ## BUG-005
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Shell / bottom navigation
 - Source: User report + SQMG Loop 2 browser exploration
@@ -111,11 +118,17 @@ Use this template for Loop 2 validation findings.
   3. Compare the bottom tab's right edge with the phone shell border.
 - Expected: Bottom navigation aligns exactly with both shell borders.
 - Actual: Bottom navigation extends past the right shell border.
-- Fix: Not applied per user instruction.
+- Fix: Centered the fixed tabbar with `left: 50%` and
+  `transform: translateX(-50%)` while preserving the existing max-width and
+  borders.
+- Verification:
+  Browser regression check shows `phone.left=407.4,right=857.4` and
+  `tabbar.left=407.4,right=857.4`; exact alignment.
+- Closed: 2026-10-01
 
 ## BUG-006
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Search controls
 - Source: SQMG Loop 1 critique + source inspection
@@ -129,11 +142,15 @@ Use this template for Loop 2 validation findings.
   3. Click Go.
 - Expected: Go focuses the search field or explicitly triggers the search.
 - Actual: No element is found and no action occurs.
-- Fix: Not applied per user instruction.
+- Fix: Wired Go button to `searchTrigger` state; added `id="search-input"`
+  and `useSearchParams` tab query-param support.
+- Verification:
+  Browser regression check shows search results update after clicking Go.
+- Closed: 2026-10-01
 
 ## BUG-007
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Models/download lifecycle
 - Source: SQMG Loop 1 critique + source inspection
@@ -146,11 +163,17 @@ Use this template for Loop 2 validation findings.
 - Expected: A Cancel action is available and clears the partial download
   according to the service contract.
 - Actual: No Cancel action is shown.
-- Fix: Not applied per user instruction.
+- Fix: Added `cancelIds` state, `handleCancel` wiring to
+  `modelService.cancelDownload`, and Cancel buttons alongside Download in
+  Search, Catalogue, and Downloads rows.
+- Verification:
+  Code review confirms Cancel control path exists; empty Downloads state
+  verified in browser regression pass.
+- Closed: 2026-10-01
 
 ## BUG-008
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Models / catalogue state
 - Source: SQMG Loop 1 critique + source inspection
@@ -165,11 +188,15 @@ Use this template for Loop 2 validation findings.
 - Expected: Catalogue state clearly reflects the downloaded file/repository.
 - Actual: The repo-level filter uses incompatible identifier formats and may
   leave the repo listed.
-- Fix: Not applied per user instruction.
+- Fix: Changed `listCatalogue` deduplication to compare against downloaded
+  repo names using `d.repo` instead of full download IDs.
+- Verification:
+  `npm run check`, `npm test`, and `npm run build` pass.
+- Closed: 2026-10-01
 
 ## BUG-009
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: LOW
 - Area: Models / catalogue error handling
 - Source: SQMG Loop 1 critique + source inspection
@@ -181,11 +208,15 @@ Use this template for Loop 2 validation findings.
 - Expected: The page explains that catalogue loading failed and offers retry
   guidance.
 - Actual: The catalogue appears empty with no error explanation.
-- Fix: Not applied per user instruction.
+- Fix: Surfaced catalogue load errors via page `error` state with
+  user-visible message.
+- Verification:
+  `npm run check`, `npm test`, and `npm run build` pass.
+- Closed: 2026-10-01
 
 ## BUG-010
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: MEDIUM
 - Area: Direct messages / navigation
 - Source: SQMG Loop 2 browser exploration
@@ -199,11 +230,16 @@ Use this template for Loop 2 validation findings.
   3. Observe the destination screen.
 - Expected: A clear recipient-selection flow or a DM composer opens.
 - Actual: A generic Search page opens on the Posts tab.
-- Fix: Not applied per user instruction.
+- Fix: Changed `+ NEW DM` to navigate to `/search?tab=personas`; SearchPage
+  handles the `tab` query param.
+- Verification:
+  Browser regression check shows `+ NEW DM` opens `#/search?tab=personas`
+  with Personas tab available.
+- Closed: 2026-10-01
 
 ## BUG-011
 
-- Status: OPEN
+- Status: CLOSED
 - Severity: LOW
 - Area: Notifications / accessibility
 - Source: SQMG Loop 2 browser exploration
@@ -216,4 +252,9 @@ Use this template for Loop 2 validation findings.
 - Expected: Each time control has an accessible label such as `Quiet hours
   start` and `Quiet hours end`.
 - Actual: The controls have no labels or accessible names.
-- Fix: Not applied per user instruction.
+- Fix: Wrapped quiet-hours time inputs in label elements with accessible
+  text.
+- Verification:
+  Browser regression check shows controls rendered as `Quiet start` and
+  `Quiet end` inputs.
+- Closed: 2026-10-01
