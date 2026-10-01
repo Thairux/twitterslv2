@@ -168,3 +168,38 @@ Use this template for Loop 2 validation findings.
   guidance.
 - Actual: The catalogue appears empty with no error explanation.
 - Fix: Not applied per user instruction.
+
+## BUG-010
+
+- Status: OPEN
+- Severity: MEDIUM
+- Area: Direct messages / navigation
+- Source: SQMG Loop 2 browser exploration
+- Evidence: From the Inbox, clicking `+ NEW DM` navigates to `#/search`, but
+  leaves the Search tab on Posts and provides no recipient picker or
+  explanation that the user must switch to Personas/Dms. The resulting screen
+  is not a DM composer and does not start a conversation.
+- Steps to reproduce:
+  1. Open Messages/Inbox.
+  2. Click `+ NEW DM`.
+  3. Observe the destination screen.
+- Expected: A clear recipient-selection flow or a DM composer opens.
+- Actual: A generic Search page opens on the Posts tab.
+- Fix: Not applied per user instruction.
+
+## BUG-011
+
+- Status: OPEN
+- Severity: LOW
+- Area: Notifications / accessibility
+- Source: SQMG Loop 2 browser exploration
+- Evidence: Quiet-hours inputs render as two unlabeled time controls separated
+  by the text `to`. Browser accessibility inspection exposes them as generic
+  inputs with no accessible name, unlike the labeled notification checkboxes.
+- Steps to reproduce:
+  1. Open Alerts/Notifications.
+  2. Inspect the quiet-hours controls with browser accessibility tools.
+- Expected: Each time control has an accessible label such as `Quiet hours
+  start` and `Quiet hours end`.
+- Actual: The controls have no labels or accessible names.
+- Fix: Not applied per user instruction.

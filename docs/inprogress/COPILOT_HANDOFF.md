@@ -59,6 +59,9 @@ invariants rules in force.
   `BUG-005` (bottom tab bar crosses the phone shell's right boundary).
 - Additional OPEN findings: `BUG-006` through `BUG-009` and `IMP-006` through
   `IMP-008`; see `docs/bugs.md` and `docs/improvements.md`.
+- This broader feature walk added `BUG-010` (New DM opens generic Search
+  without a recipient flow) and `BUG-011` (quiet-hours inputs lack accessible
+  labels).
 - No application code was changed.
 
 ## What Copilot Should Do Next
