@@ -55,7 +55,9 @@ body {
 
 .tabbar {
   position: fixed;
+  left: 50%;
   bottom: 0;
+  transform: translateX(-50%);
   width: 100%;
   max-width: 450px;
   background: var(--nav-bg);
