@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgyDemo - Models Hub</title>
+  <style>
+    :root {
+      --font-mono: "Courier New", Courier, monospace;
+      --font-sans: "Space Grotesk", system-ui, sans-serif;
+      --border-width: 3px;
+      --radius: 0px;
+    }
+    [data-theme="light"] {
+      --bg: #ffdf00; --card: #ffffff; --border: #000000; --text: #000000; --text-dim: #333333; --accent: #ff00ff; --accent-hover: #cc00cc; --shadow: 4px 4px 0px #000000; --nav-bg: #ffffff; --thread-line: #000000;
+    }
+    [data-theme="dark"] {
+      --bg: #000000; --card: #111111; --border: #00ffcc; --text: #00ffcc; --text-dim: #009977; --accent: #ff00ff; --accent-hover: #ff66ff; --shadow: 4px 4px 0px #00ffcc; --nav-bg: #111111; --thread-line: #00ffcc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--bg); color: var(--text); font-family: var(--font-mono); display: flex; justify-content: center; min-height: 100vh; transition: background-color 0.2s; }
+    .phone { width: 100%; max-width: 450px; background: var(--bg); border-left: var(--border-width) solid var(--border); border-right: var(--border-width) solid var(--border); position: relative; display: flex; flex-direction: column; min-height: 100vh; }
+    header { position: sticky; top: 0; background: var(--nav-bg); border-bottom: var(--border-width) solid var(--border); padding: 12px; display: flex; justify-content: space-between; align-items: center; z-index: 50; }
+    .logo { font-weight: bold; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; background: var(--accent); color: var(--bg); padding: 4px 8px; border: var(--border-width) solid var(--border); box-shadow: 2px 2px 0px var(--border); text-decoration: none; }
+    .sync-status { font-size: 10px; color: #00ff00; border: 1px solid #00ff00; padding: 2px 4px; margin-left: 4px; }
+    button, .btn { font-family: inherit; cursor: pointer; background: var(--card); color: var(--text); border: var(--border-width) solid var(--border); box-shadow: 2px 2px 0px var(--border); padding: 6px 10px; font-weight: bold; text-decoration: none; display: inline-block; text-align: center; transition: transform 0.1s, box-shadow 0.1s; }
+    button:active, .btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px var(--border); }
+    .content-area { flex: 1; padding: 16px; padding-bottom: 80px; overflow-y: auto; }
+    .tabbar { position: fixed; bottom: 0; width: 100%; max-width: 444px; background: var(--nav-bg); border-top: var(--border-width) solid var(--border); display: flex; justify-content: space-around; padding: 12px 0; z-index: 50; }
+    .tab { background: none; border: none; box-shadow: none; font-size: 12px; font-weight: bold; padding: 8px; text-decoration: none; color: var(--text-dim); }
+    .tab.active { color: var(--accent); border-bottom: var(--border-width) solid var(--accent); }
+    
+        .feed-tabs { display: flex; border-bottom: var(--border-width) solid var(--border); margin-bottom: 16px; }
+        .feed-tabs button { flex: 1; border: none; box-shadow: none; background: transparent; padding: 12px; font-weight: bold; color: var(--text-dim); }
+        .feed-tabs button.active { border-bottom: 4px solid var(--accent); color: var(--accent); }
+        .tab-pane { display: none; }
+        .tab-pane.active-pane { display: block; }
+        .model-card { background: var(--card); border: var(--border-width) solid var(--border); box-shadow: var(--shadow); padding: 12px; margin-bottom: 12px; }
+        .meta { font-size: 11px; color: var(--text-dim); }
+        .dl-prog { height: 8px; background: var(--accent); margin-top: 4px; width: 0%; transition: width 0.2s; }
+        .file-item { border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 8px; }
+        
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <header>
+      <div style="display:flex; align-items:center;">
+        <a href="index.html" class="logo">AGY</a>
+        <span class="sync-status">[SYNC OK]</span>
+      </div>
+      <div style="display:flex; gap: 4px;">
+        <a href="models.html" class="btn" style="font-size:10px;">Models</a>
+        <a href="friend.html" class="btn" style="font-size:10px;">Friend</a>
+        <a href="settings.html" class="btn" style="font-size:10px;">Settings</a>
+        <button id="theme-toggle" style="font-size:10px;">TGL</button>
+      </div>
+    </header>
+    <div class="content-area">
+      
+        <h2>HF Models Hub</h2><br/>
+        
+        <div class="feed-tabs" id="model-tabs">
+            <button class="active" onclick="showTab('search')">Search</button>
+            <button onclick="showTab('cat')">Catalogue</button>
+            <button onclick="showTab('down')">Downloads</button>
+        </div>
+
+        <div id="tab-search" class="tab-pane active-pane">
+            <div style="display:flex; gap:8px; margin-bottom: 16px;">
+                <input type="text" id="searchInput" placeholder="Search HF (e.g. qwen, llava gguf)" style="flex:1; padding:8px; background:var(--bg); color:var(--text); border:var(--border-width) solid var(--border);" />
+                <button class="btn" onclick="searchHF()">Go</button>
+            </div>
+            <div id="searchResults"></div>
+        </div>
+
+        <div id="tab-cat" class="tab-pane">
+            <div class="model-card">
+                <b>Qwen2.5-1.5B-Instruct-GGUF (Agent)</b><br/>
+                <span class="meta">Repo: Qwen/Qwen2.5-1.5B-Instruct-GGUF</span><br/>
+                <button class="btn" style="margin-top:8px; font-size:12px;" onclick="loadRepoFiles('Qwen/Qwen2.5-1.5B-Instruct-GGUF')">View Files</button>
+            </div>
+            <div class="model-card">
+                <b>Flux.1-schnell-gguf (Image)</b><br/>
+                <span class="meta">Repo: city96/Flux.1-schnell-gguf</span><br/>
+                <button class="btn" style="margin-top:8px; font-size:12px;" onclick="loadRepoFiles('city96/Flux.1-schnell-gguf')">View Files</button>
+            </div>
+            <div class="model-card">
+                <b>Moondream2 (Caption)</b><br/>
+                <span class="meta">Repo: vikhyatk/moondream2</span><br/>
+                <button class="btn" style="margin-top:8px; font-size:12px;" onclick="loadRepoFiles('vikhyatk/moondream2')">View Files</button>
+            </div>
+        </div>
+
+        <div id="tab-down" class="tab-pane">
+            <div id="downloadsList">Loading storage...</div>
+        </div>
+        
+    </div>
+    <div class="tabbar">
+      <a href="index.html" class="tab ">Home</a>
+      <a href="notifications.html" class="tab ">Notifications</a>
+      <a href="dms.html" class="tab ">Messages</a>
+      <a href="profile.html" class="tab active">Me</a>
+    </div>
+  </div>
+  <script>
+    const toggleBtn = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem('agydemo-theme') || 'dark';
+    html.setAttribute('data-theme', savedTheme);
+    toggleBtn.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('agydemo-theme', next);
+    });
+    
+        const dbName = 'twittersl-models';
+        let db;
+
+        // Init IndexedDB
+        const request = indexedDB.open(dbName, 1);
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            if (!db.objectStoreNames.contains('models')) {
+                db.createObjectStore('models', { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            loadDownloads();
+        };
+
+        function showTab(t) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active-pane'));
+            document.querySelectorAll('#model-tabs button').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + t).classList.add('active-pane');
+            event.target.classList.add('active');
+            if(t === 'down') loadDownloads();
+        }
+
+        async function searchHF() {
+            const q = document.getElementById('searchInput').value;
+            const resEl = document.getElementById('searchResults');
+            resEl.innerHTML = 'Searching...';
+            try {
+                const res = await fetch(`https://huggingface.co/api/models?search=${encodeURIComponent(q)}&limit=5`);
+                const json = await res.json();
+                resEl.innerHTML = '';
+                json.forEach(repo => {
+                    const d = document.createElement('div');
+                    d.className = 'model-card';
+                    d.innerHTML = `
+                        <b>${repo.id}</b><br/>
+                        <span class="meta">Likes: ${repo.likes} | Downloads: ${repo.downloads}</span><br/>
+                        <button class="btn" style="margin-top:8px; font-size:12px;" onclick="loadRepoFiles('${repo.id}', this.parentElement)">View GGUF Files</button>
+                        <div class="files-container" style="margin-top:8px;"></div>
+                    `;
+                    resEl.appendChild(d);
+                });
+            } catch(e) { resEl.innerHTML = 'Error searching HF.'; }
+        }
+
+        async function loadRepoFiles(repoId, parentEl) {
+            const cont = parentEl ? parentEl.querySelector('.files-container') : document.getElementById('searchResults');
+            if(!parentEl) {
+                cont.innerHTML = `<b>${repoId} Files</b><br/>`;
+                showTab('search');
+            }
+            cont.innerHTML += `<span class="meta">Fetching tree...</span>`;
+            
+            try {
+                const res = await fetch(`https://huggingface.co/api/models/${repoId}/tree/main`);
+                const json = await res.json();
+                
+                const ggufs = json.filter(f => f.path.endsWith('.gguf'));
+                cont.innerHTML = '';
+                if(ggufs.length === 0) { cont.innerHTML = '<span class="meta">No .gguf files found in root.</span>'; return; }
+                
+                ggufs.forEach(f => {
+                    const sizeGB = f.size / 1024 / 1024 / 1024;
+                    const recRAM = Math.ceil((sizeGB * 1.5) + 1.5);
+                    const fileId = repoId + '/' + f.path;
+                    
+                    const fd = document.createElement('div');
+                    fd.className = 'file-item';
+                    fd.innerHTML = `
+                        <div style="font-size:12px; word-break:break-all;"><b>${f.path}</b></div>
+                        <div class="meta">Size: ${(sizeGB).toFixed(2)} GB | Rec RAM: ${recRAM} GB</div>
+                        <button class="btn" style="font-size:10px; margin-top:4px;" onclick="downloadModel('${repoId}', '${f.path}', ${f.size}, this)">Download to Cache</button>
+                        <div class="dl-prog" id="prog-${btoa(fileId).replace(/=/g,'')}"></div>
+                    `;
+                    cont.appendChild(fd);
+                });
+            } catch(e) { cont.innerHTML = '<span class="meta">Error loading repo tree.</span>'; }
+        }
+
+        async function downloadModel(repo, path, totalSize, btnEl) {
+            btnEl.disabled = true;
+            btnEl.textContent = 'Downloading... (Mocked fetch for safety in proto)';
+            const fileId = repo + '/' + path;
+            const progBar = document.getElementById(`prog-${btoa(fileId).replace(/=/g,'')}`);
+            
+            // To prevent crashing browser storage during prototype demo, 
+            // we will simulate the download timing based on chunks, then save a mock blob.
+            // In a real port, we stream to IndexedDB or Native FS.
+            let downloaded = 0;
+            const fakeChunkSize = totalSize / 20; // 20 steps
+            
+            const interval = setInterval(() => {
+                downloaded += fakeChunkSize;
+                const pct = Math.min(100, Math.round((downloaded / totalSize) * 100));
+                if(progBar) progBar.style.width = pct + '%';
+                
+                if(downloaded >= totalSize) {
+                    clearInterval(interval);
+                    btnEl.textContent = 'Downloaded';
+                    
+                    // Save to IndexedDB (Mock blob representing metadata)
+                    const tx = db.transaction('models', 'readwrite');
+                    tx.objectStore('models').put({
+                        id: fileId,
+                        repo: repo,
+                        path: path,
+                        size: totalSize,
+                        savedAt: Date.now(),
+                        data: 'MOCK_BLOB_FOR_DEMO'
+                    });
+                    
+                    setTimeout(loadDownloads, 1000);
+                }
+            }, 200);
+        }
+
+        function loadDownloads() {
+            if(!db) return;
+            const tx = db.transaction('models', 'readonly');
+            const req = tx.objectStore('models').getAll();
+            req.onsuccess = () => {
+                const list = document.getElementById('downloadsList');
+                if(!list) return;
+                list.innerHTML = '';
+                if(req.result.length === 0) { list.innerHTML = '<span class="meta">No downloaded models.</span>'; return; }
+                
+                req.result.forEach(m => {
+                    const sizeGB = (m.size / 1024 / 1024 / 1024).toFixed(2);
+                    const d = document.createElement('div');
+                    d.className = 'model-card';
+                    d.innerHTML = `
+                        <div style="font-size:12px; word-break:break-all;"><b>${m.path}</b></div>
+                        <div class="meta">Repo: ${m.repo} | Size: ${sizeGB} GB</div>
+                        <button class="btn" style="margin-top:8px; font-size:10px; color:var(--accent);" onclick="deleteModel('${m.id}')">Delete from Storage</button>
+                    `;
+                    list.appendChild(d);
+                });
+            };
+        }
+
+        function deleteModel(id) {
+            const tx = db.transaction('models', 'readwrite');
+            tx.objectStore('models').delete(id);
+            tx.oncomplete = () => loadDownloads();
+        }
+        
+  </script>
+</body>
+</html>

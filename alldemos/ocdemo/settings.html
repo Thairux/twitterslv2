@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSL — Settings</title>
+  <style>
+    :root {
+      --font-mono: "Courier New", Courier, monospace;
+      --font-sans: "Space Grotesk", system-ui, sans-serif;
+      --border-width: 3px;
+      --radius: 0px;
+    }
+    [data-theme="light"] {
+      --bg: #ffdf00; --card: #ffffff; --border: #000000; --text: #000000; --text-dim: #333333; --accent: #ff00ff; --accent-hover: #cc00cc; --shadow: 4px 4px 0px #000000; --nav-bg: #ffffff; --thread-line: #000000;
+    }
+    [data-theme="dark"] {
+      --bg: #000000; --card: #111111; --border: #00ffcc; --text: #00ffcc; --text-dim: #009977; --accent: #ff00ff; --accent-hover: #ff66ff; --shadow: 4px 4px 0px #00ffcc; --nav-bg: #111111; --thread-line: #00ffcc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--bg); color: var(--text); font-family: var(--font-mono); display: flex; justify-content: center; min-height: 100vh; transition: background-color 0.2s; }
+    .phone { width: 100%; max-width: 450px; background: var(--bg); border-left: var(--border-width) solid var(--border); border-right: var(--border-width) solid var(--border); position: relative; display: flex; flex-direction: column; min-height: 100vh; }
+    header { position: sticky; top: 0; background: var(--nav-bg); border-bottom: var(--border-width) solid var(--border); padding: 12px; display: flex; justify-content: space-between; align-items: center; z-index: 50; }
+    .logo { font-weight: bold; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; background: var(--accent); color: var(--bg); padding: 4px 8px; border: var(--border-width) solid var(--border); box-shadow: 2px 2px 0px var(--border); text-decoration: none; }
+    .sync-status { font-size: 10px; color: #00ff00; border: 1px solid #00ff00; padding: 2px 4px; margin-left: 4px; }
+    button, .btn { font-family: inherit; cursor: pointer; background: var(--card); color: var(--text); border: var(--border-width) solid var(--border); box-shadow: 2px 2px 0px var(--border); padding: 6px 10px; font-weight: bold; text-decoration: none; display: inline-block; text-align: center; transition: transform 0.1s, box-shadow 0.1s; }
+    button:active, .btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px var(--border); }
+    .content-area { flex: 1; padding: 16px; padding-bottom: 80px; overflow-y: auto; }
+    .tabbar { position: fixed; bottom: 0; width: 100%; max-width: 444px; background: var(--nav-bg); border-top: var(--border-width) solid var(--border); display: flex; justify-content: space-around; padding: 12px 0; z-index: 50; }
+    .tab { background: none; border: none; box-shadow: none; font-size: 12px; font-weight: bold; padding: 8px; text-decoration: none; color: var(--text-dim); }
+    .tab.active { color: var(--accent); border-bottom: var(--border-width) solid var(--accent); }
+    
+        input[type=text], input[type=password], select { background: var(--bg); color: var(--text); border: var(--border-width) solid var(--border); padding: 8px; font-family: inherit; width: 100%; }
+        input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+        label { display: block; margin-bottom: 4px; font-weight: bold; }
+        
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <header>
+      <div style="display:flex; align-items:center;">
+        <a href="index.html" class="logo">TSL</a>
+        <span class="sync-status">[SYNC OK]</span>
+      </div>
+      <div style="display:flex; gap: 4px;">
+        <a href="models.html" class="btn" style="font-size:10px;">Models</a>
+        <a href="friend.html" class="btn" style="font-size:10px;">Friend</a>
+        <a href="settings.html" class="btn" style="font-size:10px;">Settings</a>
+        <button id="theme-toggle" style="font-size:10px;">TGL</button>
+      </div>
+    </header>
+    <div class="content-area">
+      
+        <h2>Configuration</h2><br/>
+        <label><b>Model Endpoint URL</b>
+            <div style="display:flex; gap:8px; margin-top:4px;">
+                <input type='text' id='endpointInput' value='http://127.0.0.1:8080' style="flex:1;"/>
+                <button class="btn" onclick="checkEndpoint()">Check</button>
+            </div>
+        </label>
+        <p style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">
+            Directs where the app sends AI inference requests.<br/><br/>
+            <b>Recommended:</b> Leave as <i>http://127.0.0.1:8080</i> with a local GGUF model
+            from the Models tab for completely private, offline inference.<br/>
+            Use an external URL only if you have a cloud LLM provider.
+        </p>
+        <br/>
+
+        <label><b>API Key</b> <span style="font-size:10px; color:var(--text-dim);">(cloud providers only)</span>
+            <div style="display:flex; gap:8px; margin-top:4px;">
+                <input type='password' id='apiKeyInput' placeholder='sk-...' style="flex:1;"/>
+                <button class="btn" onclick="clearKey()">Clear</button>
+            </div>
+        </label>
+        <p style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">
+            Only required if your Model Endpoint is a cloud service (e.g. OpenAI, Anthropic, custom hosted API).<br/>
+            <b>Leave blank for local GGUF inference.</b> Stored securely in device SecureStore — never logged or transmitted elsewhere.
+        </p>
+        <br/>
+        
+        <p style="margin-bottom:8px;">Manage your local models in the <a href="models.html" style="color:var(--accent);">Models Tab</a>.</p>
+
+        <label style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" checked />
+            Explicit Persona Memory Consent
+        </label><br/><br/>
+
+        <br/>
+        <label><b>Profile Details</b>
+            <div style='display:flex; flex-direction:column; gap:4px; margin-top:4px;'>
+                <input type='text' placeholder='Display Name' value='You' />
+                <input type='text' placeholder='Bio' value='Island Creator.' />
+                <input type='text' placeholder='Avatar URL' value='assets/avatar-you.svg' />
+            </div>
+        </label><br/><br/>
+        <button class='btn' onclick="saveSettings()">Save Configuration</button>
+        <span id="saveStatus" style="font-size:11px; color:var(--text-dim); margin-left:8px;"></span>
+        
+    </div>
+    <div class="tabbar">
+      <a href="index.html" class="tab ">Home</a>
+      <a href="notifications.html" class="tab ">Notifications</a>
+      <a href="dms.html" class="tab ">Messages</a>
+      <a href="profile.html" class="tab active">Me</a>
+    </div>
+  </div>
+  <script>
+    const toggleBtn = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem('ocdemo-theme') || 'dark';
+    html.setAttribute('data-theme', savedTheme);
+    toggleBtn.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('ocdemo-theme', next);
+    });
+    
+        function checkEndpoint() {
+            const url = document.getElementById('endpointInput').value;
+            fetch(url + '/health').then(r => {
+                document.getElementById('saveStatus').textContent = r.ok ? '[OK] Endpoint reachable' : '[WARN] Non-200 response';
+            }).catch(() => {
+                document.getElementById('saveStatus').textContent = '[ERR] Cannot reach endpoint';
+            });
+        }
+        function clearKey() {
+            document.getElementById('apiKeyInput').value = '';
+            localStorage.removeItem('ocdemo-apikey');
+        }
+        function saveSettings() {
+            const endpoint = document.getElementById('endpointInput').value;
+            const apiKey = document.getElementById('apiKeyInput').value;
+            localStorage.setItem('ocdemo-endpoint', endpoint);
+            if (apiKey) localStorage.setItem('ocdemo-apikey', apiKey);
+            document.getElementById('saveStatus').textContent = '[SAVED]';
+            setTimeout(() => document.getElementById('saveStatus').textContent = '', 2000);
+        }
+        // Load saved values
+        const saved = localStorage.getItem('ocdemo-endpoint');
+        if (saved) document.getElementById('endpointInput').value = saved;
+        
+  </script>
+</body>
+</html>
