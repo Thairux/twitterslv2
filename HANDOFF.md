@@ -31,6 +31,6 @@ models/downloads verification gate.
 - Secrets handling (rule 07): Preferences/secure storage only.
 
 ## Next session files
-`docs/inprogress/COPILOT_HANDOFF.md`, `docs/sprints/sprint-07.md`,
+`docs/inprogress/COPILOT_HANDOFF.md`, `docs/sprint-history/sprint-07.md`,
 `agents/skills/model-provider/SKILL.md`, and
 `agents/skills/testing-strategy/SKILL.md`.
