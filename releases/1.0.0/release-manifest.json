@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "builtAt": "2026-09-29T22:49:00Z",
+  "commit": "local",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "quality": {
+    "loop1": "pass",
+    "loop2": "pass",
+    "loop3": "pass",
+    "openFindings": 0
+  },
+  "artifacts": [
+    "dist/index.html",
+    "dist/assets/index-D88Nkka_.js",
+    "dist/assets/index-B9FuLyE6.js",
+    "dist/assets/web-BWOUM3Jo.js",
+    "dist/assets/migrations-CRaR4i2J.js",
+    "dist/assets/web-DbrXz8VG.js",
+    "dist/assets/index-B31wm5Jx.js",
+    "dist/assets/web-ahMkJiil.js",
+    "dist/assets/index-hUPC299Y.js",
+    "dist/assets/index-CPmM2eTh.js"
+  ]
+}
