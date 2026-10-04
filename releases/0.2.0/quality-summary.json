@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "sqmg": {
+    "loop1": {
+      "status": "green",
+      "openFindings": 0,
+      "highOrMediumOpen": 0
+    },
+    "loop2": {
+      "status": "green",
+      "openFindings": 0,
+      "highOrMediumOpen": 0
+    },
+    "loop3": {
+      "status": "green",
+      "openFindings": 0,
+      "highOrMediumOpen": 0
+    },
+    "verification": {
+      "typeCheck": "green",
+      "tests": "green",
+      "e2e": "green",
+      "build": "green",
+      "apk": "green"
+    }
+  },
+  "summary": "All SQMG gates are green. No HIGH or MEDIUM findings remain open.",
+  "releasedAt": "2026-10-01"
+}

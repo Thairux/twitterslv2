@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "releaseCandidate": true,
+  "date": "2026-10-01",
+  "summary": "Multi-model support for chat/caption/image, Capacitor filesystem base64 fix, and verified GGUF catalogue.",
+  "gates": {
+    "loop1Critique": "green",
+    "loop2Validation": "green",
+    "loop3Regression": "green",
+    "typeCheck": "green",
+    "tests": "green",
+    "e2e": "green",
+    "build": "green",
+    "apk": "green"
+  },
+  "artifacts": {
+    "apk": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "webDist": "dist/"
+  },
+  "openFindings": [],
+  "changedFiles": [
+    "src/lib/api/model-client.ts",
+    "src/lib/api/secrets.ts",
+    "src/lib/config.ts",
+    "src/lib/api/bootstrap.ts",
+    "src/lib/api/index.tsx",
+    "src/native/secrets.ts",
+    "src/native/files.ts",
+    "src/pages/SettingsPage.tsx",
+    "src/App.tsx",
+    "docs/sprint-history/sprint-07.md",
+    "docs/sprint-history/current-sprint.md",
+    "docs/inprogress/COPILOT_HANDOFF.md",
+    "package.json",
+    "quality-manifest.json"
+  ]
+}

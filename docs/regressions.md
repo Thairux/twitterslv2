@@ -94,3 +94,12 @@ Loop 3 regression findings for Sprint 7 SQMG gate.
 - New OPEN regressions found: 0
 - All reviewed behaviors match expected post-fix state.
 - Next step: proceed to verification loop and release-artifact creation if requested.
+
+## SQM pass — 2026-10-03
+
+- Status: discovery-only pass; no fixes applied.
+- Loop 1 critique: reviewed `docs/improvements.md` and source; all findings already CLOSED; no new OPEN improvement findings.
+- Loop 2 validation: re-ran `npm run check`, `npm run test`, `npm run test:e2e`, and `npm run build`; all green; no new OPEN bugs recorded.
+- Loop 3 regression: reviewed `docs/regressions.md`; all reviewed cases match expected post-fix state; no new OPEN regressions.
+- Release artifact present: `releases/1.0.0/` contains `release-manifest.json`, `release-notes.md`, and `quality-summary.json`.
+- Next step: if desired, proceed to formal release-candidate promotion or Sprint 8 planning.

@@ -1,1 +1,37 @@
-{"version":"1.0.0","builtAt":"2026-10-01T18:50:00+03:00","commit":"deb8293","build":{"typeCheck":"pass","test":"pass","build":"pass","e2e":"pass"},"quality":{"loop1":"pass","loop2":"pass","loop3":"pass","openFindings":0},"artifacts":["dist/index.html","dist/assets/index-kCh0IZVw.css","dist/assets/index-DehQI2K5.js","dist/assets/index-DZ-zQDo2.js","dist/assets/web-BWOUM3Jo.js","dist/assets/migrations-DUA0cYbo.js","dist/assets/web-BhZSwEtH.js","dist/assets/index-B31wm5Jx.js","dist/assets/web-ahMkJiil.js","dist/assets/index-ufbq_4pT.js","dist/assets/index-DhIjr5F-.js"]}
+{
+  "version": "1.0.0",
+  "releasedAt": "2026-10-04T14:10:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "quality": {
+    "loop1": "pass",
+    "loop2": "pass",
+    "loop3": "pass",
+    "openFindings": 0
+  },
+  "features": [
+    "Like/Repost buttons on posts",
+    "Model selector with endpoint discovery",
+    "Local model selection",
+    "Expanded 3-step onboarding",
+    "Data export and reset"
+  ],
+  "artifacts": [
+    "dist/index.html",
+    "dist/assets/index-kCh0IZVw.css",
+    "dist/assets/index-CipnRTu_.js",
+    "dist/assets/index-BKZwDjsE.js",
+    "dist/assets/web-BWOUM3Jo.js",
+    "dist/assets/migrations-CP9WDNAC.js",
+    "dist/assets/web-CmMFYCIA.js",
+    "dist/assets/index-B31wm5Jx.js",
+    "dist/assets/web-ahMkJiil.js",
+    "dist/assets/index-B8Y8QN_X.js",
+    "dist/assets/index-BKA9mnQ5.js"
+  ]
+}

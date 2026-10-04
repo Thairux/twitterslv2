@@ -1,22 +1,3 @@
-export interface Post {
-  id: string;
-  author: {
-    name: string;
-    handle: string;
-    avatarUrl?: string;
-  };
-  body: string;
-  createdAt: string;
-  ai_generated: boolean;
-  likes: number;
-  reposts: number;
-}
-
-export interface CreatePostInput {
-  body: string;
-  replyTo?: string;
-}
-
-export async function create(_input: CreatePostInput): Promise<Post> {
-  throw new Error('Not implemented: api.posts.create (use store.createPost directly)');
-}
+// Post domain types are defined in `src/lib/domain/post.ts`.
+// This module is intentionally empty because post mutations go through
+// `Store.createPost` / `Store.createReply` from the API layer.

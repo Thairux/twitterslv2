@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom';
 import type { Post } from '../lib/domain/post';
 import { BookmarkButton } from './BookmarkButton';
+import { LikeButton } from './LikeButton';
+import { RepostButton } from './RepostButton';
 import { useBlobUrl } from '../lib/api/use-blob-url';
 import { useNativeFiles } from '../lib/api';
+import { useEffect, useState } from 'react';
+import { extractOpenGraph } from '../lib/api/opengraph';
 
 export interface PostCardProps {
   post: Post;
@@ -22,6 +26,23 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
   const nativeFiles = useNativeFiles();
   const mediaUrl = useBlobUrl(nativeFiles, post.imagePath || undefined);
   const showMedia = mediaUrl || post.imagePrompt;
+  const [ogPreview, setOgPreview] = useState<{ title?: string; description?: string; image?: string; url?: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOg() {
+      const urlMatch = post.body.match(/https?:\/\/[^\s]+/);
+      if (!urlMatch) return;
+      try {
+        const data = await extractOpenGraph(urlMatch[0]);
+        if (!cancelled && data.title) setOgPreview(data);
+      } catch {
+        // ignore OG fetch failures
+      }
+    }
+    loadOg();
+    return () => { cancelled = true; };
+  }, [post.body]);
 
   return (
     <div className="post">
@@ -48,6 +69,35 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
           )}
         </div>
       </div>
+      {ogPreview && (
+        <div
+          style={{
+            marginBottom: 8,
+            border: '2px solid var(--border)',
+            borderRadius: 4,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {ogPreview.image && (
+            <img
+              src={ogPreview.image}
+              alt={ogPreview.title || 'link preview'}
+              style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+            />
+          )}
+          <div style={{ padding: 8, background: 'var(--card)' }}>
+            <div style={{ fontWeight: 'bold', fontSize: 12 }}>{ogPreview.title}</div>
+            {ogPreview.description && (
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{ogPreview.description}</div>
+            )}
+            {ogPreview.url && (
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4, wordBreak: 'break-all' }}>{ogPreview.url}</div>
+            )}
+          </div>
+        </div>
+      )}
       <Link to={`/post/${post.id}`} className="post-body">
         {post.edited && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>[edited] </span>}
         {truncated}
@@ -123,6 +173,8 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
         {onQuote && (
           <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => onQuote(post.id)}>Quote</button>
         )}
+        <LikeButton postId={post.id} />
+        <RepostButton postId={post.id} />
         <BookmarkButton postId={post.id} />
       </div>
     </div>

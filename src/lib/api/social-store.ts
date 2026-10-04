@@ -69,4 +69,20 @@ export class SocialStore {
   async getPoll(postId: string): Promise<{ question: string; options: Array<{ id: string; label: string; votes: number }> } | null> {
     return this.store.getPoll(postId);
   }
+
+  async toggleLike(postId: string, personaId = 'user'): Promise<void> {
+    await this.store.toggleReaction(postId, personaId, 'like');
+  }
+
+  async toggleRepost(postId: string, personaId = 'user'): Promise<void> {
+    await this.store.toggleReaction(postId, personaId, 'repost');
+  }
+
+  async isLiked(postId: string, personaId = 'user'): Promise<boolean> {
+    return this.store.isReacted(postId, personaId, 'like');
+  }
+
+  async isReposted(postId: string, personaId = 'user'): Promise<boolean> {
+    return this.store.isReacted(postId, personaId, 'repost');
+  }
 }

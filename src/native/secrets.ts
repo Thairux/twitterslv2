@@ -6,6 +6,9 @@
 const WEB_NS = 'tsl-';
 const KEY_ENDPOINT = `${WEB_NS}endpoint`;
 const KEY_APIKEY = `${WEB_NS}apikey`;
+const KEY_IMAGE_GEN_ENDPOINT = `${WEB_NS}image-gen-endpoint`;
+const KEY_CAPTION_ENDPOINT = `${WEB_NS}caption-endpoint`;
+const KEY_SELECTED_MODEL = `${WEB_NS}selected-model`;
 
 const WEB_SECRET = 'tsl-web-obfuscation-key';
 
@@ -124,5 +127,57 @@ export async function clearApiKey(): Promise<void> {
     await secureDel(KEY_APIKEY);
   } else {
     localStorage.removeItem(KEY_APIKEY);
+  }
+}
+
+export async function getImageGenEndpoint(): Promise<string> {
+  if (isNative()) return (await prefGet(KEY_IMAGE_GEN_ENDPOINT)) ?? '';
+  const raw = localStorage.getItem(KEY_IMAGE_GEN_ENDPOINT);
+  if (!raw) return '';
+  try {
+    return deobfuscate(raw);
+  } catch {
+    return '';
+  }
+}
+
+export async function setImageGenEndpoint(url: string): Promise<void> {
+  if (isNative()) {
+    await prefSet(KEY_IMAGE_GEN_ENDPOINT, url);
+  } else {
+    localStorage.setItem(KEY_IMAGE_GEN_ENDPOINT, obfuscate(url));
+  }
+}
+
+export async function getCaptionEndpoint(): Promise<string> {
+  if (isNative()) return (await prefGet(KEY_CAPTION_ENDPOINT)) ?? '';
+  const raw = localStorage.getItem(KEY_CAPTION_ENDPOINT);
+  if (!raw) return '';
+  try {
+    return deobfuscate(raw);
+  } catch {
+    return '';
+  }
+}
+
+export async function setCaptionEndpoint(url: string): Promise<void> {
+  if (isNative()) {
+    await prefSet(KEY_CAPTION_ENDPOINT, url);
+  } else {
+    localStorage.setItem(KEY_CAPTION_ENDPOINT, obfuscate(url));
+  }
+}
+
+export async function getSelectedModel(): Promise<string | null> {
+  if (isNative()) return await prefGet(KEY_SELECTED_MODEL);
+  const raw = localStorage.getItem(KEY_SELECTED_MODEL);
+  return raw ?? null;
+}
+
+export async function setSelectedModel(modelId: string): Promise<void> {
+  if (isNative()) {
+    await prefSet(KEY_SELECTED_MODEL, modelId);
+  } else {
+    localStorage.setItem(KEY_SELECTED_MODEL, modelId);
   }
 }

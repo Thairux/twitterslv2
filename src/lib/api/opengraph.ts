@@ -1,2 +1,45 @@
-// API: opengraph + newspaper + persona-generator (Sprint 7, port v1).
-export {};
+// API: opengraph — structured link metadata extraction (Sprint 7 port).
+// Complements `newspaper.ts` with OG-specific fields when available.
+
+export interface OpenGraphResult {
+  title?: string;
+  description?: string;
+  image?: string;
+  url?: string;
+  siteName?: string;
+  type?: string;
+  error?: string;
+}
+
+export async function extractOpenGraph(url: string, timeoutMs = 10_000): Promise<OpenGraphResult> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      return { error: `HTTP ${res.status}` };
+    }
+    const html = await res.text();
+    const result: OpenGraphResult = {};
+
+    const metaTags: Array<{ property: string; key: keyof OpenGraphResult }> = [
+      { property: 'og:title', key: 'title' },
+      { property: 'og:description', key: 'description' },
+      { property: 'og:image', key: 'image' },
+      { property: 'og:url', key: 'url' },
+      { property: 'og:site_name', key: 'siteName' },
+      { property: 'og:type', key: 'type' },
+    ];
+
+    for (const tag of metaTags) {
+      const match = html.match(new RegExp(`<meta[^>]+property="${tag.property}"[^>]+content="([^"]+)"`, 'i'));
+      if (match) result[tag.key] = match[1];
+    }
+
+    return result;
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}

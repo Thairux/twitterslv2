@@ -1,3 +1,8 @@
+---
+name: aboutrepo
+description: Mandatory first-load skill for the TwitterSL v2 codebase. Use this skill at the start of every session to verify stack, architecture docs, rules, and sprint context before any claim or edit.
+---
+
 # aboutrepo — Mandatory First-Load
 
 Load this skill FIRST every session, before any claim or edit.

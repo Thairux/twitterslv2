@@ -39,7 +39,7 @@ interface ShellProps {
 function Shell({ data }: ShellProps) {
   const location = useLocation();
   const { toggleTheme } = useTheme();
-  const { store, socialStore, dmStore, secrets, modelService } = data;
+  const { store, socialStore, dmStore, secrets, modelService, client } = data;
 
   const isTabActive = (tabPath: string) => {
     const path = location.pathname;
@@ -74,7 +74,7 @@ function Shell({ data }: ShellProps) {
           <Route path="/dms" element={<DMsPage />} />
           <Route path="/messages/:id" element={<FriendPage />} />
           <Route path="/models" element={<ModelsPage modelService={modelService} />} />
-          <Route path="/settings" element={<SettingsPage store={store} secrets={secrets} />} />
+          <Route path="/settings" element={<SettingsPage store={store} secrets={secrets} modelService={modelService} client={client} />} />
           <Route path="/persona/:id" element={<PersonaPage />} />
           <Route path="/search" element={<SearchPage socialStore={socialStore} dmStore={dmStore} />} />
           <Route path="/chatter" element={<ChatterPage socialStore={socialStore} />} />
@@ -167,7 +167,7 @@ export function App() {
     <HashRouter>
       <ThemeProvider>
         <ErrorBoundary>
-          <ApiProvider store={data.store} dmStore={data.dmStore} socialStore={data.socialStore} modelService={data.modelService} nativeFiles={data.nativeFiles}>
+          <ApiProvider store={data.store} dmStore={data.dmStore} socialStore={data.socialStore} modelService={data.modelService} nativeFiles={data.nativeFiles} client={data.client}>
             <Shell data={data} />
           </ApiProvider>
         </ErrorBoundary>

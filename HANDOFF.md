@@ -1,9 +1,9 @@
 # HANDOFF — TwitterSL v2
 
 ## What this is
-v2 = Capacitor port of v1 (`../twittersl`). The app is implemented through the
-Sprint 7 models/endpoint surface; the active work is closing the manual
-models/downloads verification gate.
+v2 = Capacitor port of v1 (`../twittersl`). The app is implemented through
+Sprint 9 social/model/onboarding/export surfaces; the active work is ongoing
+quality verification and production readiness.
 
 ## Current state
 - Root tooling is installed and verified through the current test/build gates.
@@ -18,11 +18,9 @@ models/downloads verification gate.
 
 ## How to continue
 1. Read `agents/skills/aboutrepo/SKILL.md`, then the mandatory first-load docs.
-2. Load the Sprint 7/model-provider skills from `agents/skills-lock.json`.
-3. Complete the manual Loop 2 browser pass in
-   `docs/inprogress/COPILOT_HANDOFF.md`.
-4. Run `npm run check`, `npm test`, `npm run test:e2e`, and `npm run build`.
-5. Record the outcome in `docs/sprint-history/` and update the handoff.
+2. Load the relevant sprint skills from `agents/skills-lock.json`.
+3. Run `npm run check`, `npm test`, `npm run test:e2e`, and `npm run build`.
+4. Record outcomes in `docs/sprint-history/` and update the handoff.
 
 ## Do not touch
 - `src/lib/domain/*` purity (no Capacitor/SQLite/fetch, rule 04).
@@ -31,6 +29,6 @@ models/downloads verification gate.
 - Secrets handling (rule 07): Preferences/secure storage only.
 
 ## Next session files
-`docs/inprogress/COPILOT_HANDOFF.md`, `docs/sprint-history/sprint-07.md`,
-`agents/skills/model-provider/SKILL.md`, and
+`docs/inprogress/COPILOT_HANDOFF.md`, `docs/sprint-history/current-sprint.md`,
+`docs/sprint-history/sprint-09.md`, and
 `agents/skills/testing-strategy/SKILL.md`.

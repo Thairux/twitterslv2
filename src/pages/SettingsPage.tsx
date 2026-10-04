@@ -3,10 +3,18 @@ import { Link } from 'react-router-dom';
 import type { Store } from '../lib/api/store';
 import type { Secrets } from '../lib/api/secrets';
 import { onResumeTick } from '../lib/background';
+import { exportAllData } from '../lib/api/export';
 
 interface SettingsPageProps {
   store: Store;
   secrets: Secrets;
+  modelService?: {
+    listLocalModels: () => Promise<Array<{ id: string; repo: string; path: string; sizeBytes: number; recRamGb: number }>>;
+    listEndpointModels: () => Promise<Array<{ id: string; name?: string }>>;
+  };
+  client?: {
+    listModels: () => Promise<Array<{ id: string; name?: string }>>;
+  };
 }
 
 interface PendingMemory {
@@ -52,9 +60,11 @@ function MemoryApproval({ store }: { store: Store }) {
   );
 }
 
-export function SettingsPage({ store, secrets }: SettingsPageProps) {
+export function SettingsPage({ store, secrets, modelService, client }: SettingsPageProps) {
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [imageGenEndpoint, setImageGenEndpoint] = useState('');
+  const [captionEndpoint, setCaptionEndpoint] = useState('');
   const [consent, setConsent] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -66,13 +76,26 @@ export function SettingsPage({ store, secrets }: SettingsPageProps) {
   const [protectedPosts, setProtectedPosts] = useState(false);
   const [simLog, setSimLog] = useState('');
 
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [localModels, setLocalModels] = useState<Array<{ id: string; repo: string; path: string; sizeBytes: number; recRamGb: number }>>([]);
+  const [endpointModels, setEndpointModels] = useState<Array<{ id: string; name?: string }>>([]);
+  const [discovering, setDiscovering] = useState(false);
+
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
         const ep = await secrets.getEndpoint();
         const key = await secrets.getApiKey();
+        const imgEp = await secrets.getImageGenEndpoint();
+        const capEp = await secrets.getCaptionEndpoint();
+        const selModel = await secrets.getSelectedModel();
         setEndpoint(ep ?? '');
         setApiKey(key ?? '');
+        setImageGenEndpoint(imgEp ?? '');
+        setCaptionEndpoint(capEp ?? '');
+        setSelectedModel(selModel);
         const profile = await store.getUserProfile();
         setDisplayName(profile.displayName);
         setBio(profile.bio);
@@ -82,12 +105,29 @@ export function SettingsPage({ store, secrets }: SettingsPageProps) {
         setMutedWords(words);
         const privacy = await store.getAgentConfig('protected_posts');
         setProtectedPosts(privacy?.value === '1');
+        if (modelService) {
+          const local = await modelService.listLocalModels();
+          setLocalModels(local);
+        }
       } catch {
         // ignore
       }
     }
     load();
-  }, [store, secrets]);
+  }, [store, secrets, modelService]);
+
+  async function discoverModels() {
+    setDiscovering(true);
+    setError('');
+    try {
+      const models = client ? await client.listModels() : [];
+      setEndpointModels(models);
+    } catch (e) {
+      setError(`Discovery failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDiscovering(false);
+    }
+  }
 
   async function handleCheck() {
     setError('');
@@ -115,6 +155,8 @@ export function SettingsPage({ store, secrets }: SettingsPageProps) {
       } else {
         await secrets.clearApiKey();
       }
+      await secrets.setImageGenEndpoint(imageGenEndpoint);
+      await secrets.setCaptionEndpoint(captionEndpoint);
       store.updateUserProfile({
         displayName: displayName || 'You',
         handle: (await store.getUserProfile()).handle,
@@ -137,6 +179,48 @@ export function SettingsPage({ store, secrets }: SettingsPageProps) {
       await secrets.clearApiKey();
     } catch {
       setError('Failed to clear API key');
+    }
+  }
+
+  async function handleSelectModel(modelId: string) {
+    setSelectedModel(modelId);
+    try {
+      await secrets.setSelectedModel(modelId);
+    } catch (e) {
+      setError(`Failed to save model selection: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const data = await exportAllData(store);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `twittersl-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setOk('[EXPORTED]');
+      setTimeout(() => setOk(''), 2000);
+    } catch (e) {
+      setError(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function handleReset() {
+    try {
+      const tables = await store.query<any>("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+      for (const t of tables) {
+        await store.run(`DELETE FROM ${t.name}`);
+      }
+      setShowResetConfirm(false);
+      setOk('[RESET] Reloading...');
+      setTimeout(() => window.location.reload(), 500);
+    } catch (e) {
+      setError(`Reset failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -184,10 +268,109 @@ export function SettingsPage({ store, secrets }: SettingsPageProps) {
       </p>
       <br/>
 
+      <label><b>Image Generation Endpoint</b> <span className="meta">(optional)</span>
+        <div className="field-row">
+          <input
+            type="text"
+            value={imageGenEndpoint}
+            onChange={(e) => setImageGenEndpoint(e.target.value)}
+            placeholder="http://127.0.0.1:8188"
+            className="input-field"
+          />
+        </div>
+      </label>
+      <p className="help-text">
+        Optional sidecar for AI image generation (e.g. Flux/SD). Leave blank to disable image generation.
+      </p>
+      <br/>
+
+      <label><b>Caption Endpoint</b> <span className="meta">(optional)</span>
+        <div className="field-row">
+          <input
+            type="text"
+            value={captionEndpoint}
+            onChange={(e) => setCaptionEndpoint(e.target.value)}
+            placeholder="http://127.0.0.1:8081"
+            className="input-field"
+          />
+        </div>
+      </label>
+      <p className="help-text">
+        Optional sidecar for image captioning (e.g. Moondream2/LLaVA via llama.cpp mtmd). Leave blank to disable captioning.
+      </p>
+      <br/>
+
       <p className="meta">
         Manage your local models in the <Link to="/models" className="btn" style={{ padding: '2px 8px', fontSize: 12 }}>Models Tab</Link>.
       </p>
 
+      <br/><br/>
+      <h3 style={{ marginBottom: 8 }}>Model Selector</h3>
+      <p className="meta">
+        Current selection: <b>{selectedModel ?? 'none'}</b>
+      </p>
+
+      {endpoint && (
+        <div style={{ marginBottom: 12 }}>
+          <label><b>Endpoint Models</b> <span className="meta">(discover from {endpoint})</span>
+            <div className="field-row" style={{ marginTop: 4 }}>
+              <button className="btn" onClick={discoverModels} disabled={discovering}>
+                {discovering ? 'Discovering…' : 'Discover Models'}
+              </button>
+            </div>
+          </label>
+          {endpointModels.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {endpointModels.map((m) => (
+                <div key={m.id} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{m.name ?? m.id}</span>
+                  <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleSelectModel(m.id)}>
+                    {selectedModel === m.id ? 'Selected' : 'Select'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {endpointModels.length === 0 && !discovering && (
+            <p className="meta" style={{ marginTop: 4 }}>No models discovered yet. Click Discover Models.</p>
+          )}
+        </div>
+      )}
+
+      <div>
+        <label><b>Downloaded Local Models</b></label>
+        {modelService && (
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {localModels.map((m) => (
+              <div key={m.id} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{m.repo} <span className="meta">({(m.sizeBytes / (1024 * 1024)).toFixed(1)} MB)</span></span>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleSelectModel(m.id)}>
+                  {selectedModel === m.id ? 'Selected' : 'Select'}
+                </button>
+              </div>
+            ))}
+            {localModels.length === 0 && <p className="meta">No downloaded models.</p>}
+          </div>
+        )}
+      </div>
+
+      <br/><br/>
+      <h3 style={{ marginBottom: 8 }}>Data</h3>
+      <div className="field-row" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <button className="btn" onClick={handleExport}>Export Data</button>
+        <button className="btn" onClick={() => setShowResetConfirm(true)}>Reset All Data</button>
+      </div>
+      {showResetConfirm && (
+        <div style={{ marginTop: 8, padding: 8, border: '2px solid red', borderRadius: 4 }}>
+          <p style={{ color: 'red' }}>This will permanently delete all posts, replies, DMs, bookmarks, personas, and settings. This cannot be undone.</p>
+          <div className="field-row" style={{ marginTop: 8 }}>
+            <button className="btn" onClick={handleReset} style={{ color: 'red' }}>Confirm Reset</button>
+            <button className="btn" onClick={() => setShowResetConfirm(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <br/><br/>
       <label className="check-label">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         Explicit Persona Memory Consent

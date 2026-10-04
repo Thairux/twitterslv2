@@ -1,7 +1,8 @@
 import { Store } from './store';
-import { searchRepos, listRepoGgufs } from './hf';
+import { searchRepos, listRepoGgufs, resolveDefaultBranch } from './hf';
 import type { FilesAdapter } from '@/native/files';
 import type { DownloadedModelRow } from '@/store/schema';
+import { ModelClient } from './model-client';
 import { z } from 'zod';
 
 export type DownloadedModel = DownloadedModelRow;
@@ -10,25 +11,43 @@ const CatalogueEntrySchema = z.object({
   id: z.string().min(1),
   author: z.string().min(1),
   modelName: z.string().min(1),
+  modelType: z.enum(['chat', 'image', 'caption']).default('chat'),
   siblings: z.array(z.object({ filename: z.string(), size: z.number() })).optional(),
 });
 
 export type CatalogueEntry = z.infer<typeof CatalogueEntrySchema>;
 
 export class ModelService {
-  constructor(private store: Store, private files: FilesAdapter) {}
+  constructor(private store: Store, private files: FilesAdapter, private client?: ModelClient) {}
 
   async search(query: string): Promise<Array<{ id: string; author: string; modelName: string }>> {
     if (!query.trim()) return [];
     return searchRepos(query);
   }
 
+  async listLocalModels(): Promise<Array<{ id: string; repo: string; path: string; sizeBytes: number; recRamGb: number }>> {
+    return this.store.query<{ id: string; repo: string; path: string; sizeBytes: number; recRamGb: number }>(
+      'SELECT id, repo, path, size_bytes AS sizeBytes, rec_ram_gb AS recRamGb FROM downloaded_models',
+    );
+  }
+
+  async listEndpointModels(): Promise<Array<{ id: string; name?: string }>> {
+    if (!this.client) return [];
+    try {
+      return await this.client.listModels();
+    } catch {
+      return [];
+    }
+  }
+
   async listCatalogue(): Promise<CatalogueEntry[]> {
     const raw = [
-      { id: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF', author: 'Qwen', modelName: 'Qwen2.5-0.5B-Instruct-GGUF' },
-      { id: 'TheBloke/Mistral-7B-Instruct-v0.2-GGUF', author: 'TheBloke', modelName: 'Mistral-7B-Instruct-v0.2-GGUF' },
-      { id: 'MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF', author: 'MaziyarPanahi', modelName: 'Mistral-7B-Instruct-v0.3-GGUF' },
-      { id: 'QuantFactory/Meta-Llama-3.1-8B-Instruct-GGUF', author: 'QuantFactory', modelName: 'Meta-Llama-3.1-8B-Instruct-GGUF' },
+      { id: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF', author: 'Qwen', modelName: 'Qwen2.5-0.5B-Instruct-GGUF', modelType: 'chat' as const },
+      { id: 'TheBloke/Mistral-7B-Instruct-v0.2-GGUF', author: 'TheBloke', modelName: 'Mistral-7B-Instruct-v0.2-GGUF', modelType: 'chat' as const },
+      { id: 'MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF', author: 'MaziyarPanahi', modelName: 'Mistral-7B-Instruct-v0.3-GGUF', modelType: 'chat' as const },
+      { id: 'QuantFactory/Meta-Llama-3.1-8B-Instruct-GGUF', author: 'QuantFactory', modelName: 'Meta-Llama-3.1-8B-Instruct-GGUF', modelType: 'chat' as const },
+      { id: 'stabilityai/stable-diffusion-xl-base-1.0', author: 'stabilityai', modelName: 'Stable Diffusion XL Base 1.0', modelType: 'image' as const },
+      { id: 'Salesforce/blip-image-captioning-base', author: 'Salesforce', modelName: 'BLIP Image Captioning Base', modelType: 'caption' as const },
     ];
 
     const downloads = await this.store.query<DownloadedModel>('SELECT id, repo, path FROM downloaded_models');
@@ -95,7 +114,8 @@ export class ModelService {
   ): Promise<{ path: string; sizeBytes: number; recRamGb: number }> {
     const [author, ...nameParts] = repoId.split('/');
     const modelName = nameParts.join('/');
-    const url = `https://huggingface.co/${encodeURIComponent(author)}/${encodeURIComponent(modelName)}/resolve/main/${encodeURIComponent(filename)}`;
+    const branch = await resolveDefaultBranch(repoId);
+    const url = `https://huggingface.co/${encodeURIComponent(author)}/${encodeURIComponent(modelName)}/resolve/${branch}/${encodeURIComponent(filename)}`;
     const id = `${repoId}/${filename}`;
     const path = `models/${id.replace(/\//g, '_')}`;
 

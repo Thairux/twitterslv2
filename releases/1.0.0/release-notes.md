@@ -1,26 +1,31 @@
 # Release Notes — TwitterSL v2 1.0.0
 
 ## Summary
-Commercial-viability release for the local-first AI-persona niche. All SQMG loops pass: critique, validation, and regression.
+
+Production-ready release of TwitterSL v2 with social interaction features, model management, and user onboarding improvements.
+
+## Features
+
+- Added Like and Repost buttons to all post cards across Feed, Thread, Profile, and Chatter
+- Added Model Selector in Settings with automatic endpoint model discovery via `/v1/models`
+- Added local downloaded model selection and persistence
+- Expanded onboarding to 3-step walkthrough: welcome, how-it-works, first actions
+- Added data export to JSON and full data reset with confirmation in Settings
 
 ## Fixes
-- Fixed web SQLite `INSERT OR IGNORE`/`OR REPLACE` semantics in `WebSQLiteAdapter.execInsert`.
-- Fixed `Database.transaction` to flush queued statements through the adapter transaction path, restoring atomicity on native and web.
-- Fixed boot-path secret reads with user-facing error handling.
-- Fixed `webLoadAll` promise rejection handling to prevent permanent `ensureWebStore()` hangs.
-- Fixed `appendBlob` cache mutation order so web blob cache only updates after successful IndexedDB persistence.
-- Fixed `webSave`/`webDelete` to always close IndexedDB connections via `try/finally`.
-- Fixed `ensureWebStore` to reset its cached promise on failure, enabling retry after IDB errors.
-- Fixed `createPoll` and `votePoll` to use atomic transactions, preventing orphaned polls and vote-count races.
-- Fixed `toggleReaction` to read-then-toggle without race-condition duplicates.
-- Fixed `ProfilePage` loader to catch async errors instead of unhandled rejection.
-- Fixed `ComposePage` image upload handler to catch save errors.
-- Fixed `SearchPage` with debounced search and wired Go button.
-- Fixed `dm-store.ts` architecture leak by removing Infra import.
-- Wired `SeedService.seedIfEmpty()` into bootstrap so fresh installs get starter personas and state.
+
+- Fixed duplicate type declarations in SettingsPage
+- Ensured all new components follow existing TSL token patterns
+- Maintained four-layer architecture purity for all new code
 
 ## Verification
-- `npm run check` — pass
-- `npm run test` — 99 tests pass
-- `npm run build` — pass
-- `npm run test:e2e` — 4 E2E tests pass
+
+- `npm run check` — clean TypeScript
+- `npm test` — 99 tests passing
+- `npm run test:e2e` — 4 Playwright tests passing
+- `npm run build` — production build succeeds
+
+## Upgrade Notes
+
+- Fresh install recommended for data reset functionality
+- Existing local models and settings are preserved across version update

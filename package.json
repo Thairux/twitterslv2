@@ -1,7 +1,7 @@
 {
   "name": "twitterslv2",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "TwitterSL v2 — local-first fake-Twitter island sim, Capacitor + Vite + React port of v1 (Expo).",
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "@capacitor/filesystem": "^6.0.0",
     "@capacitor/local-notifications": "^6.1.0",
     "@capacitor/preferences": "^6.0.0",
+    "llama-cpp-capacitor": "^0.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",

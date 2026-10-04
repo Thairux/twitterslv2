@@ -535,6 +535,11 @@ export class Store {
     }
   }
 
+  async isReacted(postId: string, personaId: string, kind: 'like' | 'repost'): Promise<boolean> {
+    const row = await this.selectOne<{ id: string }>('SELECT id FROM reactions WHERE post_id = ? AND persona_id = ? AND kind = ?', [postId, personaId, kind]);
+    return !!row;
+  }
+
   // Bookmarks
   async listBookmarks(_userId: string): Promise<Bookmark[]> {
     return this.query<Bookmark>('SELECT id, post_id AS postId, created_at AS createdAt FROM bookmarks ORDER BY created_at DESC');

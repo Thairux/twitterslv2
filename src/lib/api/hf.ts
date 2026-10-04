@@ -12,6 +12,28 @@ export interface HfGguf {
   size: number;
 }
 
+const branchCache = new Map<string, string>();
+
+export async function resolveDefaultBranch(repoId: string): Promise<string> {
+  if (branchCache.has(repoId)) return branchCache.get(repoId)!;
+  const [author, ...nameParts] = repoId.split('/');
+  const modelName = nameParts.join('/');
+  const url = `https://huggingface.co/api/models/${encodeURIComponent(author)}/${encodeURIComponent(modelName)}`;
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = (await res.json()) as Record<string, unknown>;
+      const branch = String(json.branch ?? json.defaultBranch ?? 'main');
+      branchCache.set(repoId, branch);
+      return branch;
+    }
+  } catch {
+    // fall through to default
+  }
+  branchCache.set(repoId, 'main');
+  return 'main';
+}
+
 export async function searchRepos(query: string): Promise<HfRepo[]> {
   const url = `https://huggingface.co/api/models?search=${encodeURIComponent(query)}&full=true&limit=20`;
   const res = await fetch(url);
@@ -42,7 +64,8 @@ export async function searchRepos(query: string): Promise<HfRepo[]> {
 export async function listRepoGgufs(repoId: string): Promise<HfGguf[]> {
   const [author, ...nameParts] = repoId.split('/');
   const modelName = nameParts.join('/');
-  const url = `https://huggingface.co/api/models/${encodeURIComponent(author)}/${encodeURIComponent(modelName)}/tree/main`;
+  const branch = await resolveDefaultBranch(repoId);
+  const url = `https://huggingface.co/api/models/${encodeURIComponent(author)}/${encodeURIComponent(modelName)}/tree/${branch}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`HF file list failed: ${res.status}`);

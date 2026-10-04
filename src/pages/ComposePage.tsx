@@ -5,9 +5,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../lib/api';
 import { useBlobUrl } from '../lib/api/use-blob-url';
 import { MAX_POST_LEN } from '../lib/domain/post';
+import { replyToUserPost } from '../lib/sim-engine';
+import { generateImage } from '../lib/api/image';
 
 export function ComposePage() {
-  const { store, nativeFiles } = useApi();
+  const { store, nativeFiles, client } = useApi();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const quoteId = searchParams.get('quote');
@@ -21,6 +23,8 @@ export function ComposePage() {
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const previewUrl = useBlobUrl(nativeFiles, imagePath || undefined);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -64,6 +68,23 @@ export function ComposePage() {
     }
   };
 
+  const handleGenerateImage = async () => {
+    if (!aiPrompt.trim() || generating) return;
+    setGenerating(true);
+    try {
+      const result = await generateImage(aiPrompt.trim(), 'user', undefined);
+      if (result.via === 'local-model' && result.path) {
+        setImagePath(result.path);
+      } else {
+        console.warn('Image generation returned placeholder; not attaching to post');
+      }
+    } catch (err) {
+      console.error('Image generation failed:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     const trimmed = body.trim();
     if (!trimmed || saving) return;
@@ -99,6 +120,14 @@ export function ComposePage() {
           validOptions.map((label, idx) => ({ id: `opt-${idx}-${Date.now()}`, label })),
         );
       }
+
+      // Friend-first reply simulation (non-blocking; never blocks posting).
+      const personas = await store.listPersonas();
+      const crowd = personas.filter((p) => p.active);
+      replyToUserPost(id, trimmed, crowd, { modelClient: client }).catch((err) =>
+        console.error('replyToUserPost failed:', err),
+      );
+
       if (quoteId) {
         navigate(`/post/${quoteId}`);
       } else {
@@ -131,6 +160,19 @@ export function ComposePage() {
       <div className="field-row" style={{ marginBottom: 8 }}>
         <input type="file" accept="image/*" onChange={handleImageChange} className="input-field" />
         {previewUrl && <img src={previewUrl} alt="preview" style={{ width: 48, height: 48, objectFit: 'cover', border: '2px solid var(--border)' }} />}
+      </div>
+      <div className="field-row" style={{ marginBottom: 8 }}>
+        <input
+          type="text"
+          value={aiPrompt}
+          onChange={(e) => setAiPrompt(e.target.value)}
+          placeholder="Describe an image to generate..."
+          className="input-field"
+          style={{ flex: 1 }}
+        />
+        <button className="btn" onClick={handleGenerateImage} disabled={generating || !aiPrompt.trim()}>
+          {generating ? 'Generating…' : 'Generate'}
+        </button>
       </div>
       <label style={{ fontWeight: 'bold' }}>Poll (optional)</label>
       <input

@@ -19,6 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@': '/src',
       '@capacitor/community/secure-storage': '/src/native/__mocks__/secure-storage.ts',
       '@capacitor/background-task': '/src/native/__mocks__/background-task.ts',
     },
