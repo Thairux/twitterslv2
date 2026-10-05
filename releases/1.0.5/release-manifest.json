@@ -1,0 +1,17 @@
+{
+  "version": "1.0.5",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Signed release APK (CN=peter thairu muigai), installable on-device"
+  ],
+  "artifacts": [
+    "releases/1.0.5/twitterslv2-1.0.5-release.apk"
+  ]
+}

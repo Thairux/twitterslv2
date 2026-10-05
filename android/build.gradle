@@ -1,0 +1,47 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath 'com.google.gms:google-services:4.4.0'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+// Fix: llama-cpp-capacitor pins ndkVersion "29.0.13113456" (see
+// node_modules/llama-cpp-capacitor/android/build.gradle), which is neither
+// installed nor downloadable here. Force the installed NDK instead.
+// Do NOT edit node_modules — this override lives in version control.
+project(':llama-cpp-capacitor') { p ->
+    p.afterEvaluate {
+        def androidExt = p.extensions.findByName('android')
+        if (androidExt != null) {
+            androidExt.ndkVersion = '28.2.13676358'
+            try {
+                androidExt.externalNativeBuild.cmake.ndkVersion = '28.2.13676358'
+            } catch (MissingPropertyException ignored) {
+                // AGP without cmake-level ndkVersion; the top-level value is enough.
+            }
+        }
+    }
+}
