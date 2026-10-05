@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { ModelClient } from '../../src/lib/api/model-client';
+import { ModelClient, normalizeEndpoint } from '../../src/lib/api/model-client';
 
 const realFetch = globalThis.fetch;
 
@@ -57,6 +57,47 @@ describe('ModelClient.listModels', () => {
     stubFetch(() => jsonResponse({}, 500));
     const client = new ModelClient('http://127.0.0.1:8080');
     await expect(client.listModels()).resolves.toEqual([]);
+  });
+});
+
+describe('normalizeEndpoint', () => {
+  it('trims, defaults to https, and strips trailing slashes', () => {
+    expect(normalizeEndpoint('')).toBe('');
+    expect(normalizeEndpoint('  ')).toBe('');
+    expect(normalizeEndpoint('example.com/')).toBe('https://example.com');
+    expect(normalizeEndpoint('http://127.0.0.1:8080///')).toBe('http://127.0.0.1:8080');
+    expect(normalizeEndpoint('https://gateway.example/v1/')).toBe('https://gateway.example/v1');
+  });
+});
+
+describe('ModelClient.probe', () => {
+  it('reports which path answered', async () => {
+    stubFetch((url) => {
+      if (url.endsWith('/v1/models')) return jsonResponse({ data: [{ id: 'm1' }] });
+      return jsonResponse({}, 404);
+    });
+    const probe = await new ModelClient('example.com').probe();
+    expect(probe.ok).toBe(true);
+    expect(probe.via).toBe('/v1/models');
+    expect(probe.models).toEqual([{ id: 'm1', name: undefined }]);
+  });
+
+  it('flags auth failures instead of silent empty', async () => {
+    stubFetch(() => jsonResponse({}, 401));
+    const probe = await new ModelClient('https://gw.example', 'bad-key').probe();
+    expect(probe.ok).toBe(false);
+    expect(probe.status).toBe(401);
+    expect(probe.error).toMatch(/API key/);
+  });
+
+  it('falls back to /health for llama.cpp-style endpoints', async () => {
+    stubFetch((url) => {
+      if (url.endsWith('/health')) return jsonResponse({ status: 'ok' });
+      return jsonResponse({}, 404);
+    });
+    const probe = await new ModelClient('http://127.0.0.1:8080').probe();
+    expect(probe.ok).toBe(true);
+    expect(probe.via).toBe('/health');
   });
 });
 

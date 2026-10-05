@@ -1,0 +1,20 @@
+{
+  "version": "1.0.6",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Fixed native base64 file writes (model downloads work on-device)",
+    "Gateway-aware endpoint probe with URL normalization",
+    "Live settings client (no more stale endpoint in test chat / DMs)",
+    "Floating compose button on feed (demo parity)"
+  ],
+  "artifacts": [
+    "releases/1.0.6/twitterslv2-1.0.6-release.apk"
+  ]
+}

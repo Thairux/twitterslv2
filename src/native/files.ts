@@ -134,11 +134,23 @@ function fromBase64(base64: string): Uint8Array {
 
 async function fsWrite(path: string, data: Uint8Array): Promise<void> {
   const { Filesystem } = await import('@capacitor/filesystem');
+  // NOTE: never pass `encoding` for binary data — the native plugin only
+  // accepts text charsets (utf8/utf16/ascii) and rejects anything else with
+  // "Unsupported encoding provided". Omitted encoding = base64 round-trip.
   await Filesystem.writeFile({
     path,
     data: toBase64(data),
     directory: (await import('@capacitor/filesystem')).FilesystemDirectory.Data,
-    encoding: 'base64',
+    recursive: true,
+  } as any);
+}
+
+async function fsAppend(path: string, data: Uint8Array): Promise<void> {
+  const { Filesystem } = await import('@capacitor/filesystem');
+  await Filesystem.appendFile({
+    path,
+    data: toBase64(data),
+    directory: (await import('@capacitor/filesystem')).FilesystemDirectory.Data,
   } as any);
 }
 
@@ -147,7 +159,6 @@ async function fsRead(path: string): Promise<Uint8Array> {
   const { data } = await Filesystem.readFile({
     path,
     directory: (await import('@capacitor/filesystem')).FilesystemDirectory.Data,
-    encoding: 'base64',
   } as any);
   if (typeof data === 'string') {
     return fromBase64(data);
@@ -201,21 +212,9 @@ const impl: FilesAdapter = {
   },
   async appendBlob(path: string, bytes: Uint8Array): Promise<void> {
     if (isNative()) {
-      const existing = memoryStore.get(path);
-      if (!existing) {
-        try {
-          memoryStore.set(path, await fsRead(path));
-        } catch (err: any) {
-          if (!/not found/i.test(err?.message ?? '')) throw err;
-          memoryStore.set(path, new Uint8Array(0));
-        }
-      }
-      const current = memoryStore.get(path) as Uint8Array;
-      const combined = new Uint8Array(current.length + bytes.length);
-      combined.set(current, 0);
-      combined.set(bytes, current.length);
-      memoryStore.set(path, combined);
-      await fsWrite(path, combined);
+      // Native append is O(1) per chunk via the plugin — never read-modify-
+      // rewrite the whole file (a 500MB model would mean 500 full rewrites).
+      await fsAppend(path, bytes);
     } else {
       const existing = memoryStore.get(path) ?? new Uint8Array();
       const combined = new Uint8Array(existing.length + bytes.length);

@@ -164,6 +164,12 @@ export class ModelService {
     const recRamGb = Math.ceil(sizeGb * 1.5 + 1.5);
 
     if (existingBytes === 0) {
+      // Fresh download: remove any stale blob so append starts clean.
+      try {
+        await this.files.deleteBlob(path);
+      } catch {
+        // ignore — file may not exist yet
+      }
       await this.store.upsertDownloadProgress({
         id,
         repo: repoId,

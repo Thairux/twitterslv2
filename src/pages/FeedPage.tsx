@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApi } from '../lib/api';
 import { PostCard } from '../components/PostCard';
 import type { Post } from '../lib/domain/post';
@@ -61,6 +61,7 @@ export function FeedPage() {
           No posts yet. Be the first to post, or visit Settings → Background Simulation for a friend ping.
         </p>
       )}
+      <Link to="/compose" className="fab" aria-label="Compose post" data-testid="compose-fab">+</Link>
     </div>
   );
 }

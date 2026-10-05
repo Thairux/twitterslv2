@@ -19,6 +19,23 @@ export class AuthError extends Error {}
 export class RateLimitError extends Error {}
 export class ParseError extends Error {}
 
+/** Trim whitespace, default to https://, drop trailing slashes. */
+export function normalizeEndpoint(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  const withScheme = /:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return withScheme.replace(/\/+$/, '');
+}
+
+export interface EndpointProbe {
+  ok: boolean;
+  /** Which probe answered, if any. */
+  via?: '/v1/models' | '/models' | '/health' | 'base';
+  status?: number;
+  models: Array<{ id: string; name?: string }>;
+  error?: string;
+}
+
 export class ModelClient {
   readonly chatEndpoint: string;
   readonly chatApiKey?: string;
@@ -136,38 +153,77 @@ export class ModelClient {
   }
 
   async listModels(): Promise<Array<{ id: string; name?: string }>> {
-    if (!this.chatEndpoint) return [];
+    const probe = await this.probe();
+    return probe.models;
+  }
+
+  /**
+   * Gateway-aware reachability probe. Tries OpenAI-compatible model lists
+   * first (cloud gateways like Kilo), then llama.cpp-style paths, then a
+   * bare base-URL fetch — reporting exactly what answered instead of a
+   * generic "cannot reach".
+   */
+  async probe(): Promise<EndpointProbe> {
+    if (!this.chatEndpoint) return { ok: false, models: [], error: 'Model endpoint URL is empty' };
     const base = this.chatEndpoint.replace(/\/$/, '');
-    // Probe OpenAI-compatible paths first, then llama.cpp-style paths.
-    const paths = ['/v1/models', '/models'];
-    for (const p of paths) {
+    const headers: Record<string, string> = {
+      ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
+    };
+    const get = async (path: string, timeoutMs: number) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15_000);
-        const res = await fetch(`${base}${p}`, {
-          headers: {
-            ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
-          },
-          signal: controller.signal,
-        });
+        const res = await fetch(`${base}${path}`, { headers, signal: controller.signal });
+        return res;
+      } finally {
         clearTimeout(timeout);
-        if (!res.ok) continue;
+      }
+    };
+    const parseModels = async (res: Response): Promise<Array<{ id: string; name?: string }> | null> => {
+      if (res.status === 401 || res.status === 403) return null;
+      if (!res.ok) return null;
+      try {
         const json = (await res.json()) as Record<string, unknown>;
         const raw = Array.isArray(json)
           ? (json as Array<Record<string, unknown>>)
           : ((json?.data as Array<Record<string, unknown>> | undefined) ?? []);
-        if (!Array.isArray(raw) || raw.length === 0) continue;
+        if (!Array.isArray(raw) || raw.length === 0) return null;
         const models = raw
           .filter((item) => typeof item.id === 'string' || typeof item.name === 'string')
           .map((item) => ({
             id: String(item.id ?? item.name),
             name: typeof item.name === 'string' ? item.name : undefined,
           }));
-        if (models.length > 0) return models;
+        return models.length > 0 ? models : null;
+      } catch {
+        return null;
+      }
+    };
+
+    for (const p of ['/v1/models', '/models'] as const) {
+      try {
+        const res = await get(p, 15_000);
+        if (res.status === 401 || res.status === 403) {
+          return { ok: false, status: res.status, models: [], error: `Endpoint requires an API key (${res.status}).` };
+        }
+        const models = await parseModels(res);
+        if (models) return { ok: true, via: p, status: res.status, models };
       } catch {
         // try next path
       }
     }
-    return [];
+    try {
+      const res = await get('/health', 10_000);
+      if (res.ok) return { ok: true, via: '/health', status: res.status, models: [] };
+    } catch {
+      // fall through
+    }
+    try {
+      const res = await get('', 10_000);
+      if (res.ok) return { ok: true, via: 'base', status: res.status, models: [] };
+      return { ok: false, status: res.status, models: [], error: `Endpoint answered ${res.status}.` };
+    } catch (e) {
+      return { ok: false, models: [], error: `Cannot reach endpoint: ${e instanceof Error ? e.message : String(e)}` };
+    }
   }
 }

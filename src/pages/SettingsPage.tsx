@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Store } from '../lib/api/store';
 import type { Secrets } from '../lib/api/secrets';
 import type { FilesAdapter } from '../native/files';
+import { ModelClient, normalizeEndpoint } from '../lib/api/model-client';
 import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
 import { exportAllData } from '../lib/api/export';
@@ -14,6 +15,7 @@ interface SettingsPageProps {
     listLocalModels: () => Promise<Array<{ id: string; repo: string; path: string; sizeBytes: number; recRamGb: number }>>;
     listEndpointModels: () => Promise<Array<{ id: string; name?: string }>>;
   };
+  /** Kept for compatibility; Settings builds a live client from field values. */
   client?: {
     listModels: () => Promise<Array<{ id: string; name?: string }>>;
     chat: (messages: Array<{ role: string; content: string }>, opts?: { model?: string }) => Promise<string>;
@@ -64,7 +66,7 @@ function MemoryApproval({ store }: { store: Store }) {
   );
 }
 
-export function SettingsPage({ store, secrets, modelService, client, nativeFiles }: SettingsPageProps) {
+export function SettingsPage({ store, secrets, modelService, nativeFiles }: SettingsPageProps) {
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [imageGenEndpoint, setImageGenEndpoint] = useState('');
@@ -127,27 +129,47 @@ export function SettingsPage({ store, secrets, modelService, client, nativeFiles
     load();
   }, [store, secrets, modelService]);
 
-  async function discoverModels() {
-    if (!client) {
-      setDiscoverStatus('No model client configured.');
-      return;
+  // Always act on a client built from the live field values — the client
+  // created at app boot goes stale the moment the user edits endpoint/key.
+  function liveClient(): ModelClient | null {
+    const base = normalizeEndpoint(endpoint);
+    if (!base) return null;
+    const key = apiKey.trim();
+    return new ModelClient(base, key || undefined);
+  }
+
+  async function persistEndpoint(): Promise<string | null> {
+    const base = normalizeEndpoint(endpoint);
+    if (!base) return null;
+    if (base !== endpoint) setEndpoint(base);
+    try {
+      await secrets.setEndpoint(base);
+    } catch {
+      // non-fatal; callers still use the normalized value in-memory
     }
-    if (!endpoint.trim()) {
+    return base;
+  }
+
+  async function discoverModels() {
+    const probeClient = liveClient();
+    if (!probeClient) {
       setDiscoverStatus('Enter a Model Endpoint URL first, then discover.');
       return;
     }
     setDiscovering(true);
     setError('');
-    setDiscoverStatus('Probing /v1/models and /models…');
+    setDiscoverStatus('Probing /v1/models, /models, /health…');
     try {
-      const models = await client.listModels();
-      setEndpointModels(models);
-      autoDiscoveredFor.current = endpoint.trim();
-      setDiscoverStatus(
-        models.length > 0
-          ? `Found ${models.length} model${models.length === 1 ? '' : 's'}.`
-          : 'Endpoint answered but listed no models. Type the model id manually below.',
-      );
+      const probe = await probeClient.probe();
+      setEndpointModels(probe.models);
+      autoDiscoveredFor.current = normalizeEndpoint(endpoint);
+      if (probe.models.length > 0) {
+        setDiscoverStatus(`Found ${probe.models.length} model${probe.models.length === 1 ? '' : 's'} via ${probe.via}.`);
+      } else if (probe.ok) {
+        setDiscoverStatus(`Endpoint reachable via ${probe.via} but listed no models. Type the model id manually below.`);
+      } else {
+        setDiscoverStatus(probe.error ?? 'Discovery failed.');
+      }
     } catch (e) {
       setDiscoverStatus(`Discovery failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -158,18 +180,16 @@ export function SettingsPage({ store, secrets, modelService, client, nativeFiles
   // Automatic discovery: probe once per endpoint value so the picker
   // populates itself instead of waiting for a manual tap.
   useEffect(() => {
-    if (client && endpoint.trim() && autoDiscoveredFor.current !== endpoint.trim()) {
+    const base = normalizeEndpoint(endpoint);
+    if (base && autoDiscoveredFor.current !== base) {
       discoverModels();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, endpoint]);
+  }, [endpoint]);
 
   async function handleTestChat() {
-    if (!client) {
-      setError('No model client configured.');
-      return;
-    }
-    if (!endpoint.trim()) {
+    const chatClient = liveClient();
+    if (!chatClient) {
       setError('Enter a Model Endpoint URL first.');
       return;
     }
@@ -178,9 +198,10 @@ export function SettingsPage({ store, secrets, modelService, client, nativeFiles
     setError('');
     setTestResult('');
     try {
+      await persistEndpoint();
       if (model) await secrets.setSelectedModel(model);
       if (model) setSelectedModel(model);
-      const reply = await client.chat(
+      const reply = await chatClient.chat(
         [{ role: 'user', content: 'Reply with exactly: OK' }],
         model ? { model } : {},
       );
@@ -216,15 +237,24 @@ export function SettingsPage({ store, secrets, modelService, client, nativeFiles
   }
 
   async function handleCheck() {
+    const probeClient = liveClient();
+    if (!probeClient) {
+      setError('Enter a Model Endpoint URL first.');
+      return;
+    }
     setError('');
     setOk('');
+    await persistEndpoint();
     try {
-      const base = endpoint.replace(/\/$/, '');
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10_000);
-      const res = await fetch(`${base}/health`, { signal: controller.signal });
-      clearTimeout(timeout);
-      setOk(res.ok ? '[OK] Endpoint reachable' : '[WARN] Non-200 response');
+      const probe = await probeClient.probe();
+      if (probe.ok && probe.models.length > 0) {
+        setOk(`[OK] Endpoint reachable — ${probe.models.length} model(s) via ${probe.via}`);
+        setEndpointModels(probe.models);
+      } else if (probe.ok) {
+        setOk(`[OK] Endpoint reachable via ${probe.via} (no model list; type the id manually)`);
+      } else {
+        setError(`[ERR] ${probe.error ?? 'Cannot reach endpoint'}`);
+      }
     } catch {
       setError('[ERR] Cannot reach endpoint');
     }
@@ -403,7 +433,7 @@ export function SettingsPage({ store, secrets, modelService, client, nativeFiles
             type="text"
             value={modelIdInput}
             onChange={(e) => setModelIdInput(e.target.value)}
-            placeholder="e.g. step-3.7-flash:free"
+            placeholder="e.g. stepfun/step-3.7-flash:free"
             className="input-field"
             data-testid="model-id-input"
           />
@@ -419,13 +449,13 @@ export function SettingsPage({ store, secrets, modelService, client, nativeFiles
       <p className="help-text">
         For cloud gateways (e.g. Kilo), paste the gateway URL into Model Endpoint above,
         add your API key, then either Discover or type the model id
-        (e.g. <i>step-3.7-flash:free</i>) here. Local GGUF downloads need no endpoint or key.
+        (e.g. <i>stepfun/step-3.7-flash:free</i>) here. Local GGUF downloads need no endpoint or key.
       </p>
       <div className="field-row" style={{ marginTop: 4 }}>
         <button
           className="btn"
           style={{ fontSize: 11, padding: '4px 8px' }}
-          onClick={() => { setModelIdInput('step-3.7-flash:free'); handleSelectModel('step-3.7-flash:free'); }}
+          onClick={() => { setModelIdInput('stepfun/step-3.7-flash:free'); handleSelectModel('stepfun/step-3.7-flash:free'); }}
         >
           Kilo: step-3.7-flash:free
         </button>

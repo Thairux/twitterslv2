@@ -1,23 +1,31 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../lib/api';
-import { getSelectedModel } from '../lib/config';
+import { ModelClient } from '../lib/api/model-client';
+import { getSelectedModel, getModelEndpoint, getApiKey, refreshConfig } from '../lib/config';
 import { OFFLINE_FRIEND_REPLIES } from '../lib/domain/engine';
 
 async function draftFriendReply(
-  client: { chat: (m: Array<{ role: string; content: string }>, o?: { model?: string }) => Promise<string>; offlineReply: (p: string[]) => string },
   displayName: string,
   userBody: string,
 ): Promise<{ body: string; via: 'glimmer' | 'offline' }> {
+  // Build a live client from stored settings — never the stale boot client.
+  const fallback = (client: { offlineReply: (p: string[]) => string }) =>
+    ({ body: client.offlineReply(OFFLINE_FRIEND_REPLIES), via: 'offline' as const });
   try {
+    await refreshConfig();
+    const endpoint = (await getModelEndpoint()).trim();
+    if (!endpoint) throw new Error('no endpoint configured');
+    const key = await getApiKey();
     const model = (await getSelectedModel()) ?? undefined;
-    const body = await client.chat(
+    const live = new ModelClient(endpoint, key ?? undefined);
+    const body = await live.chat(
       [{ role: 'user', content: `You are ${displayName}, a kind friend. Reply briefly (under 140 chars) to: ${userBody}` }],
       model ? { model } : {},
     );
     return { body, via: 'glimmer' };
   } catch {
-    return { body: client.offlineReply(OFFLINE_FRIEND_REPLIES), via: 'offline' };
+    return fallback(new ModelClient(''));
   }
 }
 
@@ -25,7 +33,6 @@ export function FriendPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { store } = useApi();
-  const { client } = useApi();
   const [persona, setPersona] = useState<{ id: string; displayName: string; affinity: number } | null>(null);
   const [messages, setMessages] = useState<Array<{ id: string; senderId: string; body: string; createdAt: string }>>([]);
   const [body, setBody] = useState('');
@@ -60,7 +67,7 @@ export function FriendPage() {
           const greetedKey = `tsl-greeted-${threadId}`;
           if (!sessionStorage.getItem(greetedKey)) {
             sessionStorage.setItem(greetedKey, '1');
-            const greet = await draftFriendReply(client, personaRow.displayName, 'Say hello first!');
+            const greet = await draftFriendReply(personaRow.displayName, 'Say hello first!');
             const hello = {
               id: `dm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
               threadId,
@@ -80,7 +87,7 @@ export function FriendPage() {
       }
     }
     load();
-  }, [store, client, personaId, threadId, navigate]);
+  }, [store, personaId, threadId, navigate]);
 
   useEffect(() => {
     if (listRef.current) {
@@ -108,7 +115,7 @@ export function FriendPage() {
       if (persona) {
         setReplying(true);
         try {
-          const reply = await draftFriendReply(client, persona.displayName, userBody);
+          const reply = await draftFriendReply(persona.displayName, userBody);
           const answer = {
             id: `dm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
             threadId,

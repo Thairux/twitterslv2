@@ -49,6 +49,13 @@ test.describe('App exploration (usability bug hunt)', () => {
     const feedPosts = await page.locator('.post').count();
     const feedEmpty = await page.locator('[data-testid="feed-empty"]').count();
     expect(feedPosts + feedEmpty, 'feed shows posts or empty-state guidance').toBeGreaterThan(0);
+    // Compose must be reachable from the feed via the floating button.
+    await expect(page.locator('[data-testid="compose-fab"]')).toBeVisible();
+    await page.locator('[data-testid="compose-fab"]').click();
+    await page.waitForTimeout(500);
+    await expect(page.getByPlaceholder("What's happening?")).toBeVisible();
+    await page.goto('/#/');
+    await page.waitForTimeout(500);
     await expectButtonsNamed();
 
     // 2. Models hub: every tab must show content, never a blank pane.
@@ -85,7 +92,7 @@ test.describe('App exploration (usability bug hunt)', () => {
     await expect(page.locator('[data-testid="selected-model"]')).toContainText('Current selection:');
     // Kilo preset fills the model id in one tap.
     await page.getByRole('button', { name: /Kilo: step-3.7-flash:free/ }).click();
-    await expect(page.locator('[data-testid="selected-model"]')).toContainText('step-3.7-flash:free');
+    await expect(page.locator('[data-testid="selected-model"]')).toContainText('stepfun/step-3.7-flash:free');
     // Run-local with no downloads must explain itself, not crash.
     await page.locator('[data-testid="run-local-btn"]').click();
     await page.waitForTimeout(500);

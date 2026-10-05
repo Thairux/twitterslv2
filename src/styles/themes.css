@@ -298,6 +298,32 @@ body {
   border-bottom: 4px solid var(--accent);
   color: var(--accent);
 }
+/* Floating compose button — verbatim from alldemos/ocdemo/index.html,
+   except `right` is clamped: on a full-screen phone WebView the viewport is
+   narrower than 450px, which would push the button partly off-screen. */
+.fab {
+  position: fixed;
+  bottom: 80px;
+  right: max(16px, calc(50% - 225px + 16px));
+  width: 56px;
+  height: 56px;
+  background: var(--accent);
+  color: var(--bg);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow);
+  font-size: 32px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  text-decoration: none;
+  cursor: pointer;
+}
+.fab:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--border);
+}
 .tab-pane {
   display: none;
 }
