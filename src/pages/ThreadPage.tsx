@@ -13,6 +13,19 @@ export function ThreadPage() {
   const [post, setPost] = useState<Post | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [replyBody, setReplyBody] = useState('');
+  const [replying, setReplying] = useState(false);
+
+  async function reloadThread() {
+    if (!id) return;
+    try {
+      const thread = await socialStore.getThread(id);
+      setPost(thread.post);
+      setReplies(thread.replies);
+    } catch (err) {
+      console.error('Failed to load thread:', err);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -33,6 +46,29 @@ export function ThreadPage() {
     }
     load();
   }, [id, socialStore]);
+
+  async function handleReply() {
+    const trimmed = replyBody.trim();
+    if (!trimmed || !post || replying) return;
+    setReplying(true);
+    try {
+      await store.createReply({
+        id: `r-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+        postId: post.id,
+        authorId: 'user',
+        body: trimmed.slice(0, 280),
+        replyOrder: replies.length,
+        origin: 'offline',
+        createdAt: new Date().toISOString(),
+      });
+      setReplyBody('');
+      await reloadThread();
+    } catch (err) {
+      console.error('Failed to post reply:', err);
+    } finally {
+      setReplying(false);
+    }
+  }
 
   // Hooks must run before any early return (hook-count stability).
   const polls = usePolls(store, post && id ? [post.id] : []);
@@ -56,6 +92,20 @@ export function ThreadPage() {
         <PostCard post={post} poll={polls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
       )}
       <div className="thread-line" style={{ margin: '0 0 0 24px', minHeight: 24 }} />
+      <div className="field-row" style={{ marginLeft: 24, marginBottom: 12 }}>
+        <input
+          type="text"
+          value={replyBody}
+          onChange={(e) => setReplyBody(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleReply(); }}
+          placeholder="Write a comment…"
+          className="input-field"
+          data-testid="reply-input"
+        />
+        <button className="btn" onClick={handleReply} disabled={replying || !replyBody.trim()} data-testid="reply-send">
+          {replying ? '…' : 'Reply'}
+        </button>
+      </div>
       {replies.map((r) => (
         <div key={r.id} className="post" style={{ marginLeft: 24 }} data-testid={`reply-${r.id}`}>
           <div className="post-header">

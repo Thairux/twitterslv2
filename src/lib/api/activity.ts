@@ -6,9 +6,10 @@
 import type { Store } from './store';
 import type { SocialStore } from './social-store';
 import type { DmStore } from './dm-store';
-import type { ModelClient } from './model-client';
+import { ModelClient } from './model-client';
 import { replyToUserPost } from '../sim-engine';
 import { ambientTick as chatterPostTick } from '../chatter';
+import { refreshConfig, getModelEndpoint, getApiKey, getSelectedModel } from '../config';
 import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES } from '../domain/engine';
 
 export type Scheduler = (delayMs: number, fn: () => void | Promise<void>) => void;
@@ -38,6 +39,24 @@ function uniqueReplyId(postId: string, authorId: string): string {
 }
 
 /**
+ * Prefer the passed client, but fall back to a freshly resolved one: the
+ * boot-time client goes stale the moment the user edits endpoint/key/model.
+ */
+async function resolveAmbientClient(preferred?: ModelClient): Promise<ModelClient | undefined> {
+  if (preferred?.chatEndpoint?.trim()) return preferred;
+  try {
+    await refreshConfig();
+    const endpoint = (await getModelEndpoint()).trim();
+    if (!endpoint) return undefined;
+    const key = await getApiKey();
+    const model = await getSelectedModel();
+    return new ModelClient(endpoint, key ?? undefined, model ? { defaultModel: model } : {});
+  } catch {
+    return preferred;
+  }
+}
+
+/**
  * Answer a post within seconds: friend replies first, then crowd replies,
  * then a shower of likes. Fire-and-forget; every step is individually
  * try-caught so one failure never blocks the rest.
@@ -53,8 +72,9 @@ export function respondToPost(
   const run = async () => {
     const personas = (await store.listPersonas()).filter((p) => p.active && p.id !== 'user');
     if (personas.length === 0) return;
+    const live = await resolveAmbientClient(client);
     const crowd = personas.map((p) => ({ id: p.id, displayName: p.displayName, handle: p.handle, vibe: p.vibe, role: p.role }));
-    const replies = await replyToUserPost(postId, body, crowd, client ? { modelClient: client } : {});
+    const replies = await replyToUserPost(postId, body, crowd, live ? { modelClient: live } : {});
     // Friend first (fast), crowd staggered after.
     replies.forEach((reply, idx) => {
       const delayMs = idx === 0 ? 1200 : 2500 + idx * 1800;
@@ -91,8 +111,9 @@ export async function ambientBeat(
   schedule: Scheduler = defaultSchedule,
 ): Promise<{ posts: number; replies: number; likes: number }> {
   const summary = { posts: 0, replies: 0, likes: 0 };
+  const live = await resolveAmbientClient(client);
   try {
-    await chatterPostTick(store, client);
+    await chatterPostTick(store, live);
     summary.posts += 1;
   } catch {
     // posting failed — still try interactions below
@@ -112,9 +133,9 @@ export async function ambientBeat(
             const pool = persona.role === 'friend' ? OFFLINE_FRIEND_REPLIES : OFFLINE_CROWD_REPLIES;
             let text: string;
             let origin: 'glimmer' | 'offline' = 'offline';
-            if (client) {
+            if (live) {
               try {
-                text = await client.chat([
+                text = await live.chat([
                   { role: 'user', content: `You are ${persona.displayName} (${persona.handle}), ${persona.vibe}. Reply briefly (under 140 chars) to: ${post.body}` },
                 ]);
                 origin = 'glimmer';
@@ -175,9 +196,10 @@ export async function randomDmBeat(
     const pool = persona.role === 'friend' ? OFFLINE_FRIEND_REPLIES : OFFLINE_CROWD_REPLIES;
     let text: string;
     let origin: 'glimmer' | 'offline' = 'offline';
-    if (client) {
+    const live = await resolveAmbientClient(client);
+    if (live) {
       try {
-        text = await client.chat([
+        text = await live.chat([
           { role: 'user', content: `You are ${persona.displayName}, a kind island friend. Send a short spontaneous DM (under 140 chars).` },
         ]);
         origin = 'glimmer';

@@ -3,22 +3,8 @@
 
 import { FRIEND_ID, isAllowedTrollLine, AgentCustomization, DEFAULT_AGENT_CUSTOMIZATION } from './domain/persona';
 import { Reply, orderReplies } from './domain/post';
+import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES } from './domain/engine';
 import type { ModelClient } from './api/model-client';
-
-export const OFFLINE_FRIEND_REPLIES: string[] = [
-  'hey, you doing okay?',
-  'sending good vibes your way',
-  'hope your day is going well',
-];
-
-export const OFFLINE_CROWD_REPLIES: string[] = [
-  'interesting thought',
-  'nice post',
-  'agree with this',
-  'cool vibe',
-  'respect',
-  'haha nice',
-];
 
 export interface EngineOpts {
   modelClient?: ModelClient;

@@ -61,6 +61,24 @@ test.describe('Social activity loop', () => {
     await page.waitForTimeout(500);
     await expect(card.getByTestId(/likers-list-/)).toContainText('♥');
 
+    // Comment on the thread and see it persist.
+    await page.getByText(probe).first().click();
+    await page.waitForTimeout(500);
+    const comment = `My own comment ${Date.now()}`;
+    await page.getByTestId('reply-input').fill(comment);
+    await page.getByTestId('reply-send').click();
+    await page.waitForTimeout(1000);
+    await expect(page.getByText(comment).first()).toBeVisible();
+
+    // New DM: search personas → tap name → thread opens.
+    await page.goto('/#/search');
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: 'Personas' }).click();
+    await page.waitForTimeout(800);
+    await page.locator('[data-testid^="dm-open-"]').first().click();
+    await page.waitForTimeout(2500);
+    await expect(page.locator('.status-bar h2').first()).not.toBeEmpty();
+
     expect(errors, `page errors: ${errors.join(' | ')}`).toEqual([]);
   });
 });

@@ -1,0 +1,21 @@
+{
+  "version": "1.0.10",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Tappable personas open DM threads",
+    "Inline thread reply composer",
+    "Rich offline pools with dedicated post starters",
+    "Download append creates parent folders",
+    "Ambient engine uses live endpoint settings"
+  ],
+  "artifacts": [
+    "releases/1.0.10/twitterslv2-1.0.10-release.apk"
+  ]
+}

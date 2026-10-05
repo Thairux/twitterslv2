@@ -162,7 +162,7 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
               <p className="meta" style={{ marginBottom: 4 }}>Who to follow</p>
               {suggested.map((p) => (
                 <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)} data-testid={`dm-open-${p.id}`}>
                     <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
                     <div className="meta">@{p.handle}{p.bio ? ` — ${p.bio}` : ''}</div>
                   </div>
@@ -175,7 +175,7 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
           )}
           {personas.map((p) => (
             <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)} data-testid={`dm-open-${p.id}`}>
                 <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
                 <div className="meta">@{p.handle}</div>
               </div>

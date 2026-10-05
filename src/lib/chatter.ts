@@ -2,7 +2,7 @@ import { Store } from './api/store';
 import { ModelClient } from './api/model-client';
 import type { Persona } from './domain/persona';
 import { makePost } from './domain/post';
-import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES } from './domain/engine';
+import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES, OFFLINE_POST_STARTERS } from './domain/engine';
 
 export async function ambientTick(store: Store, modelClient?: ModelClient): Promise<void> {
   const personas = (await store.listPersonas()).filter((p) => p.active);
@@ -22,7 +22,7 @@ export async function ambientTick(store: Store, modelClient?: ModelClient): Prom
     let origin: 'glimmer' | 'offline' = 'offline';
     if (modelClient) {
       try {
-        const prompt = `Write a short tweet as ${persona.displayName} (${persona.role}): ${persona.vibe}. Under 140 chars.`;
+        const prompt = `You live on a tropical island social network. Write a short in-character post as ${persona.displayName} (${persona.role}): ${persona.vibe}. Slice of island life, concrete details, under 140 chars, no hashtags.`;
         body = await modelClient.chat([{ role: 'user', content: prompt }]);
         origin = 'glimmer';
         await modelClient.recordAttempt(store as any, undefined, 'chat');
@@ -30,7 +30,7 @@ export async function ambientTick(store: Store, modelClient?: ModelClient): Prom
         body = modelClient.offlineReply(pool);
       }
     } else {
-      body = pool[Math.floor(Math.random() * pool.length)];
+      body = OFFLINE_POST_STARTERS[Math.floor(Math.random() * OFFLINE_POST_STARTERS.length)];
     }
     if (!body) continue;
     const post = makePost(persona.id, body, { origin, aiGenerated: origin === 'glimmer' });

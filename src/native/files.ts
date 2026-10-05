@@ -151,6 +151,7 @@ async function fsAppend(path: string, data: Uint8Array): Promise<void> {
     path,
     data: toBase64(data),
     directory: (await import('@capacitor/filesystem')).FilesystemDirectory.Data,
+    recursive: true,
   } as any);
 }
 
