@@ -518,8 +518,8 @@ describe('social', () => {
 
 // ---- world domain (45 asserts) ----
 describe('world', () => {
-  test('WORLD_CAP is 50', () => {
-    expect(WORLD_CAP).toBe(50);
+  test('WORLD_CAP is 60', () => {
+    expect(WORLD_CAP).toBe(60);
   });
 
   test('WEEKLY_SPAWN is 1', () => {
@@ -527,9 +527,9 @@ describe('world', () => {
   });
 
   test('nextSpawnWeek null at cap', () => {
-    for (let total = 45; total <= 55; total++) {
+    for (let total = 55; total <= 65; total++) {
       const r = nextSpawnWeek(10, total);
-      expect(total >= 50 ? r === null : r === 11).toBe(true);
+      expect(total >= 60 ? r === null : r === 11).toBe(true);
     }
   });
 

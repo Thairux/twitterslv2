@@ -12,6 +12,7 @@ export function ThreadPage() {
   const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
+  const [names, setNames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     async function load() {
@@ -20,6 +21,12 @@ export function ThreadPage() {
         const thread = await socialStore.getThread(id);
         setPost(thread.post);
         setReplies(thread.replies);
+        try {
+          const personas = await store.listPersonas();
+          setNames(new Map(personas.map((p) => [p.id, p.displayName])));
+        } catch {
+          // names stay empty; author ids render as fallback
+        }
       } catch (err) {
         console.error('Failed to load thread:', err);
       }
@@ -27,20 +34,21 @@ export function ThreadPage() {
     load();
   }, [id, socialStore]);
 
+  // Hooks must run before any early return (hook-count stability).
+  const polls = usePolls(store, post && id ? [post.id] : []);
+  const pollVotes = usePollVotes(store, post && id ? [post.id] : []);
+
   if (!id) {
     return <div className="content-area"><p>Missing post id.</p></div>;
-  }
-
-  if (!post && !replies.length) {
-    return <div className="content-area"><p>Post not found.</p></div>;
   }
 
   const handleQuote = (postId: string) => {
     navigate(`/compose?quote=${encodeURIComponent(postId)}`);
   };
 
-  const polls = usePolls(store, post ? [post.id] : []);
-  const pollVotes = usePollVotes(store, post ? [post.id] : []);
+  if (!post && !replies.length) {
+    return <div className="content-area"><p>Post not found.</p></div>;
+  }
 
   return (
     <div className="content-area">
@@ -49,9 +57,9 @@ export function ThreadPage() {
       )}
       <div className="thread-line" style={{ margin: '0 0 0 24px', minHeight: 24 }} />
       {replies.map((r) => (
-        <div key={r.id} className="post" style={{ marginLeft: 24 }}>
+        <div key={r.id} className="post" style={{ marginLeft: 24 }} data-testid={`reply-${r.id}`}>
           <div className="post-header">
-            <span style={{ fontWeight: 'bold' }}>{r.authorId}</span>
+            <span style={{ fontWeight: 'bold' }}>{names.get(r.authorId) ?? r.authorId}</span>
             <span className="time">{new Date(r.createdAt).toLocaleString()}</span>
           </div>
           <div className="post-body">{r.body}</div>

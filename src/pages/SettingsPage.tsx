@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Store } from '../lib/api/store';
 import type { Secrets } from '../lib/api/secrets';
 import type { FilesAdapter } from '../native/files';
+import { useApi } from '../lib/api';
 import { ModelClient, normalizeEndpoint } from '../lib/api/model-client';
 import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
@@ -95,6 +96,23 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
   const autoDiscoveredFor = useRef<string | null>(null);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const { client: liveApiClient } = useApi();
+
+  async function runSimTick(kind: 'ping' | 'spawn') {
+    setSimLog(kind === 'ping' ? 'Running friend ping...' : 'Running weekly spawn...');
+    try {
+      await onResumeTick(store, liveApiClient);
+      const personas = await store.listPersonas();
+      setSimLog(
+        kind === 'ping'
+          ? `Friend ping complete — check your DMs. (${personas.length} personas on the island)`
+          : `Weekly spawn complete. (${personas.length} personas on the island)`,
+      );
+    } catch (err) {
+      console.error('Simulation tick failed:', err);
+      setSimLog('Simulation tick failed.');
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -604,8 +622,8 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       <h3 style={{ marginBottom: 8 }}>Background Simulation</h3>
       <p className="meta">Trigger offline simulation actions manually.</p>
       <div className="field-row" style={{ flexWrap: 'wrap' }}>
-        <button className="btn" onClick={async () => { setSimLog('Running friend ping...'); try { await onResumeTick(store, (window as any).__tsl?.modelClient); setSimLog('Friend ping complete.'); } catch (err) { console.error('Friend ping failed:', err); setSimLog('Friend ping failed.'); } }}>Friend Ping</button>
-        <button className="btn" onClick={async () => { setSimLog('Running weekly spawn...'); try { await onResumeTick(store, (window as any).__tsl?.modelClient); setSimLog('Weekly spawn complete.'); } catch (err) { console.error('Weekly spawn failed:', err); setSimLog('Weekly spawn failed.'); } }}>Weekly Spawn</button>
+        <button className="btn" onClick={() => runSimTick('ping')}>Friend Ping</button>
+        <button className="btn" onClick={() => runSimTick('spawn')}>Weekly Spawn</button>
       </div>
       {simLog && <p className="meta" style={{ marginTop: 8 }}>{simLog}</p>}
     </div>

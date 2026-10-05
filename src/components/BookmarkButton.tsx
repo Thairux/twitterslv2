@@ -30,8 +30,13 @@ export function BookmarkButton({ postId }: BookmarkButtonProps) {
   };
 
   return (
-    <button onClick={toggle} style={{ fontSize: '12px' }}>
-      {bookmarked ? 'Bookmarked' : 'Bookmark'}
+    <button
+      className="btn"
+      data-testid={`bookmark-btn-${postId}`}
+      style={{ fontSize: 10, padding: '2px 8px', ...(bookmarked ? { background: 'var(--accent)', color: 'var(--bg)' } : {}) }}
+      onClick={toggle}
+    >
+      {bookmarked ? '★ Saved' : '☆ Save'}
     </button>
   );
 }

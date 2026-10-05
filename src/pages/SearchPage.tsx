@@ -29,6 +29,49 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
   const [tags, setTags] = useState<Array<{ tag: string; count: number }>>([]);
   const [dms, setDms] = useState<Array<{ id: string; threadId: string; senderId: string; body: string; createdAt: string }>>([]);
   const [searchTrigger, setSearchTrigger] = useState(0);
+  const [suggested, setSuggested] = useState<Array<{ id: string; handle: string; displayName: string; bio?: string }>>([]);
+  const [following, setFollowing] = useState<Set<string>>(new Set());
+
+  async function refreshFollowing() {
+    try {
+      setFollowing(new Set(await store.listFollowing()));
+    } catch {
+      setFollowing(new Set());
+    }
+  }
+
+  useEffect(() => {
+    refreshFollowing();
+    // Suggestions: active personas the user doesn't follow yet.
+    (async () => {
+      try {
+        const all = (await store.listPersonas()).filter((p) => p.active && p.id !== 'user');
+        const followed = new Set(await store.listFollowing());
+        const open = all.filter((p) => !followed.has(p.id));
+        for (let i = open.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [open[i], open[j]] = [open[j], open[i]];
+        }
+        setSuggested(open.slice(0, 5).map((p) => ({ id: p.id, handle: p.handle, displayName: p.displayName, bio: p.bio })));
+      } catch {
+        setSuggested([]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store]);
+
+  async function toggleFollow(personaId: string) {
+    try {
+      if (following.has(personaId)) {
+        await store.unfollow(personaId);
+      } else {
+        await store.follow(personaId);
+      }
+      await refreshFollowing();
+    } catch (err) {
+      console.error('Follow failed:', err);
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -114,10 +157,31 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
 
       {tab === 'personas' && (
         <div className="tab-pane active-pane">
+          {!query.trim() && suggested.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <p className="meta" style={{ marginBottom: 4 }}>Who to follow</p>
+              {suggested.map((p) => (
+                <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
+                    <div className="meta">@{p.handle}{p.bio ? ` — ${p.bio}` : ''}</div>
+                  </div>
+                  <button className="btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }} onClick={() => toggleFollow(p.id)} data-testid={`follow-btn-${p.id}`}>
+                    {following.has(p.id) ? 'Following' : 'Follow'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {personas.map((p) => (
-            <div key={p.id} className="post">
-              <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
-              <div className="meta">@{p.handle}</div>
+            <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
+                <div className="meta">@{p.handle}</div>
+              </div>
+              <button className="btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }} onClick={() => toggleFollow(p.id)} data-testid={`follow-btn-${p.id}`}>
+                {following.has(p.id) ? 'Following' : 'Follow'}
+              </button>
             </div>
           ))}
           {personas.length === 0 && query && <p className="meta">No personas found.</p>}

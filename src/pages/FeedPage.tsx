@@ -17,11 +17,14 @@ export function FeedPage() {
   const lastRotatedRef = useRef<number>(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const feed = tab === 'foryou' ? await socialStore.rankFeed('user') : await socialStore.listFeedFollowing('user');
+        if (cancelled) return;
         setPosts(feed);
         const text = await getActiveEventText(store);
+        if (cancelled) return;
         setEventText(text);
         const now = Date.now();
         if (now - lastRotatedRef.current > 60_000) {
@@ -33,6 +36,13 @@ export function FeedPage() {
       }
     }
     load();
+    // Live island: re-read so ambient posts, replies counts, and likes
+    // appear without leaving the screen.
+    const timer = setInterval(load, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [socialStore, store, tab]);
 
   const handleQuote = (postId: string) => {

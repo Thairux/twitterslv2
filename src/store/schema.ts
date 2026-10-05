@@ -1,7 +1,7 @@
 // TwitterSL v2 — store schema catalogue (Sprint 2 ports v1 store/schema.sql
 // table-for-table via @capacitor-community/sqlite; additive migrations only).
 // Tables (v1 parity): personas, posts, replies, reactions, dms, memories,
-// pending_memories, follows, mutes, reports, bookmarks, downloaded_models,
+// pending_memories, follows, followers, mutes, reports, bookmarks, downloaded_models,
 // generated_images, world_events, dm_reads, user_profile, agent_config, spawn_state.
 
 export const SCHEMA_TABLES = [
@@ -13,6 +13,7 @@ export const SCHEMA_TABLES = [
   'memories',
   'pending_memories',
   'follows',
+  'followers',
   'mutes',
   'reports',
   'bookmarks',

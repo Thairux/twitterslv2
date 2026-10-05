@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { ThemeProvider, useTheme } from './components/Theme';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ApiProvider } from './lib/api';
 import { rotateDemoEvent } from './lib/daily';
 import { seedDemoEvent } from './lib/world-events';
 import { bootstrap } from './lib/api/bootstrap';
+import { ambientBeat, randomDmBeat } from './lib/api/activity';
 import { FeedPage } from './pages/FeedPage';
 import { ThreadPage } from './pages/ThreadPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -27,6 +28,7 @@ import './styles/themes.css';
 
 const TABS = [
   { path: '/', label: 'Home' },
+  { path: '/search', label: 'Search' },
   { path: '/notifications', label: 'Notifications' },
   { path: '/dms', label: 'Messages' },
   { path: '/profile', label: 'Me' },
@@ -82,6 +84,8 @@ function Shell({ data }: ShellProps) {
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/legal" element={<LegalPage />} />
           <Route path="/compose" element={<ComposePage />} />
+          {/* Hashless entry (e.g. fresh native launch) lands here — bounce home. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
       <nav className="tabbar">
@@ -112,6 +116,15 @@ export function App() {
         rotateDemoEvent(result.store).catch((err) => console.error('rotateDemoEvent failed:', err));
         (window as any).__tsl = { seedWorldEvent: async () => { try { await seedDemoEvent(result.store); } catch (err) { console.error('seedWorldEvent failed:', err); } }, lockApp: () => { setLocked(true); } };
         setData(result);
+        // Island heartbeat: personas post, reply, like, and DM on a timer
+        // so the timeline stays alive while the app is open.
+        const beat = () => {
+          ambientBeat(result.store, result.socialStore, result.client).catch(() => {});
+          randomDmBeat(result.store, result.dmStore, result.client).catch(() => {});
+        };
+        const timer = setInterval(beat, 45_000);
+        const kickoff = setTimeout(beat, 8_000);
+        (window as any).__tsl.cleanupHeartbeat = () => { clearInterval(timer); clearTimeout(kickoff); };
       } catch (err) {
         console.error('Boot failed:', err);
         setBootError(err instanceof Error ? err.message : 'Initialization failed');

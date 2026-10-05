@@ -1,0 +1,20 @@
+{
+  "version": "1.0.9",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Persisted friend-first replies and like showers on every post",
+    "Seeded Mimi (persona-friend) + 50 islanders with follows both ways",
+    "Search tab, follow suggestions, clickable likers, themed action buttons",
+    "Verified vision GGUF catalogue, 45s island heartbeat, spawn headcounts"
+  ],
+  "artifacts": [
+    "releases/1.0.9/twitterslv2-1.0.9-release.apk"
+  ]
+}

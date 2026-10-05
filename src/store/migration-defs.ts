@@ -6,7 +6,7 @@
 
 import { splitStatements } from '../lib/domain/sql';
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export interface Migration {
   version: number;
@@ -218,5 +218,10 @@ export const MIGRATIONS: Migration[] = [
     version: 9,
     name: 'add-poll-votes',
     sql: splitStatements(`CREATE TABLE IF NOT EXISTS poll_votes (poll_id TEXT NOT NULL, persona_id TEXT NOT NULL, option_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (poll_id, persona_id)); CREATE INDEX IF NOT EXISTS idx_poll_votes_poll ON poll_votes (poll_id);`),
+  },
+  {
+    version: 10,
+    name: 'add-followers',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS followers (persona_id TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT (datetime('now')));`),
   },
 ];

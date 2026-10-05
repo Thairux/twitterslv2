@@ -51,8 +51,12 @@ export class ModelService {
       { id: 'TheBloke/Mistral-7B-Instruct-v0.2-GGUF', author: 'TheBloke', modelName: 'Mistral-7B-Instruct-v0.2-GGUF', modelType: 'chat' as const },
       { id: 'MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF', author: 'MaziyarPanahi', modelName: 'Mistral-7B-Instruct-v0.3-GGUF', modelType: 'chat' as const },
       { id: 'QuantFactory/Meta-Llama-3.1-8B-Instruct-GGUF', author: 'QuantFactory', modelName: 'Meta-Llama-3.1-8B-Instruct-GGUF', modelType: 'chat' as const },
-      { id: 'stabilityai/stable-diffusion-xl-base-1.0', author: 'stabilityai', modelName: 'Stable Diffusion XL Base 1.0', modelType: 'image' as const },
-      { id: 'Salesforce/blip-image-captioning-base', author: 'Salesforce', modelName: 'BLIP Image Captioning Base', modelType: 'caption' as const },
+      // Verified vision GGUFs (live-checked against the HF API: repos exist
+      // and ship .gguf files incl. mmproj projectors for image input).
+      { id: 'moondream/moondream2-gguf', author: 'moondream', modelName: 'Moondream2 GGUF', modelType: 'caption' as const },
+      { id: 'ggml-org/moondream2-20250414-GGUF', author: 'ggml-org', modelName: 'Moondream2 20250414 GGUF', modelType: 'caption' as const },
+      { id: 'xtuner/llava-llama-3-8b-v1_1-gguf', author: 'xtuner', modelName: 'LLaVA LLaMA-3-8B GGUF', modelType: 'image' as const },
+      { id: 'cjpais/llava-1.6-mistral-7b-gguf', author: 'cjpais', modelName: 'LLaVA 1.6 Mistral-7B GGUF', modelType: 'image' as const },
     ];
 
     const downloads = await this.store.query<DownloadedModel>('SELECT id, repo, path FROM downloaded_models');

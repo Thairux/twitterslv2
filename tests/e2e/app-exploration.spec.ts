@@ -69,6 +69,10 @@ test.describe('App exploration (usability bug hunt)', () => {
     const entries = await page.locator('[data-testid="catalogue-entry"]').count();
     const emptyNote = await page.locator('[data-testid="catalogue-empty"]').count();
     expect(entries + emptyNote, 'catalogue shows entries or an empty-state message').toBeGreaterThan(0);
+    // Fresh profile: 4 chat + 4 verified vision models.
+    if (emptyNote === 0) {
+      expect(entries).toBe(8);
+    }
     await expectNoHorizontalOverflow();
 
     await page.getByRole('button', { name: 'Downloads' }).click();
@@ -103,6 +107,18 @@ test.describe('App exploration (usability bug hunt)', () => {
     await page.goto('/#/dms');
     await page.waitForTimeout(500);
     await expect(page.locator('.page-title')).toHaveText('Inbox');
+
+    // 4b. Search is one tap away and suggests islanders to follow.
+    await page.goto('/#/');
+    await page.waitForTimeout(500);
+    await page.locator('.tabbar').getByRole('link', { name: 'Search' }).click();
+    await page.waitForTimeout(800);
+    await expect(page.locator('.page-title')).toHaveText('Search');
+    await page.getByRole('button', { name: 'Personas' }).click();
+    await page.waitForTimeout(800);
+    const suggestions = await page.locator('[data-testid^="follow-btn-"]').count();
+    expect(suggestions, 'persona suggestions with follow buttons').toBeGreaterThan(0);
+    await expectNoHorizontalOverflow();
 
     // 5. Compose → feed round-trip still works.
     await page.goto('/#/compose');

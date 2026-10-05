@@ -5,11 +5,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../lib/api';
 import { useBlobUrl } from '../lib/api/use-blob-url';
 import { MAX_POST_LEN } from '../lib/domain/post';
-import { replyToUserPost } from '../lib/sim-engine';
+import { respondToPost } from '../lib/api/activity';
 import { generateImage } from '../lib/api/image';
 
 export function ComposePage() {
-  const { store, nativeFiles, client } = useApi();
+  const { store, socialStore, nativeFiles, client } = useApi();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const quoteId = searchParams.get('quote');
@@ -121,12 +121,8 @@ export function ComposePage() {
         );
       }
 
-      // Friend-first reply simulation (non-blocking; never blocks posting).
-      const personas = await store.listPersonas();
-      const crowd = personas.filter((p) => p.active);
-      replyToUserPost(id, trimmed, crowd, { modelClient: client }).catch((err) =>
-        console.error('replyToUserPost failed:', err),
-      );
+      // Friend-first replies + likes land within seconds (persisted, staggered).
+      respondToPost(socialStore, store, client, id, trimmed);
 
       if (quoteId) {
         navigate(`/post/${quoteId}`);
@@ -171,7 +167,7 @@ export function ComposePage() {
           style={{ flex: 1 }}
         />
         <button className="btn" onClick={handleGenerateImage} disabled={generating || !aiPrompt.trim()}>
-          {generating ? 'Generating…' : 'Generate'}
+          {generating ? 'Generatingï¿½' : 'Generate'}
         </button>
       </div>
       <label style={{ fontWeight: 'bold' }}>Poll (optional)</label>

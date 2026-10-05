@@ -1,0 +1,66 @@
+import { test, expect } from '@playwright/test';
+
+// Social heartbeat: posting from the UI must produce friend-first replies
+// and persona likes within seconds, with counts and liker lists updating.
+test.describe('Social activity loop', () => {
+  test('post gets replies and likes, likers listed', async ({ page }) => {
+    test.setTimeout(180000);
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(err.message));
+    page.on('console', (msg) => {
+      if (['error', 'debug'].includes(msg.type())) {
+        console.log(`[browser:${msg.type()}]`, msg.text().slice(0, 200));
+      }
+    });
+
+    await page.goto('/');
+    const locked = await page.locator('.input-field[type="password"]').count();
+    if (locked > 0) {
+      await page.getByPlaceholder('Enter PIN to unlock.').fill('0000');
+      await page.getByRole('button', { name: 'Unlock' }).click();
+      await page.waitForTimeout(1000);
+    }
+
+    const probe = `Heartbeat probe ${Date.now()}`;
+    await page.goto('/#/compose');
+    await page.waitForTimeout(500);
+    await page.getByPlaceholder("What's happening?").fill(probe);
+    await page.getByRole('button', { name: 'Post' }).click();
+    await page.waitForTimeout(1500);
+
+    // Post appears in feed.
+    await page.goto('/#/');
+    await page.waitForTimeout(500);
+    await expect(page.getByText(probe).first()).toBeVisible();
+
+    // Open the thread: friend (Mimi) must reply first, within ~40s.
+    await page.getByText(probe).first().click();
+    await page.waitForTimeout(500);
+    await expect(page.getByText('Mimi').first()).toBeVisible({ timeout: 60000 });
+
+    // Persona likes must bump the count. The feed reads fresh on every
+    // mount, so revisit the thread (fresh remount each time) until likes
+    // show — DB writes are monotonic, so any fresh read past landing wins.
+    await page.goBack();
+    await page.waitForTimeout(500);
+    let shown = '♥ 0';
+    for (let round = 0; round < 8; round += 1) {
+      const card = page.locator('.post', { hasText: probe }).first();
+      shown = (await card.getByTestId(/likers-toggle-/).textContent()) ?? '♥ 0';
+      if (/♥ [1-9]/.test(shown)) break;
+      await page.getByText(probe).first().click();
+      await page.waitForTimeout(4000);
+      await page.goBack();
+      await page.waitForTimeout(500);
+    }
+    expect(shown).toMatch(/♥ [1-9]/);
+
+    // Likers list names names.
+    const card = page.locator('.post', { hasText: probe }).first();
+    await card.getByTestId(/likers-toggle-/).click();
+    await page.waitForTimeout(500);
+    await expect(card.getByTestId(/likers-list-/)).toContainText('♥');
+
+    expect(errors, `page errors: ${errors.join(' | ')}`).toEqual([]);
+  });
+});

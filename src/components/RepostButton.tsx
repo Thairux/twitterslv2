@@ -5,9 +5,10 @@ import { useApi } from '../lib/api';
 
 export interface RepostButtonProps {
   postId: string;
+  onChange?: (reposted: boolean) => void;
 }
 
-export function RepostButton({ postId }: RepostButtonProps) {
+export function RepostButton({ postId, onChange }: RepostButtonProps) {
   const { socialStore } = useApi();
   const [reposted, setReposted] = useState(false);
 
@@ -23,12 +24,20 @@ export function RepostButton({ postId }: RepostButtonProps) {
 
   const toggle = async () => {
     await socialStore.toggleRepost(postId);
-    setReposted((prev) => !prev);
+    setReposted((prev) => {
+      onChange?.(!prev);
+      return !prev;
+    });
   };
 
   return (
-    <button onClick={toggle} style={{ fontSize: '12px' }}>
-      {reposted ? 'Reposted' : 'Repost'}
+    <button
+      className="btn"
+      data-testid={`repost-btn-${postId}`}
+      style={{ fontSize: 10, padding: '2px 8px', ...(reposted ? { background: 'var(--accent)', color: 'var(--bg)' } : {}) }}
+      onClick={toggle}
+    >
+      {reposted ? '↻ Reposted' : '↻ Repost'}
     </button>
   );
 }

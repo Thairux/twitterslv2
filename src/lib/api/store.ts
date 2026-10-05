@@ -398,6 +398,17 @@ export class Store {
     const rows = await this.query<{ persona_id: string }>('SELECT persona_id FROM follows');
     return rows.map((r) => r.persona_id);
   }
+  /** Personas following the user (the island follows you back). */
+  async listFollowers(): Promise<string[]> {
+    const rows = await this.query<{ persona_id: string }>('SELECT persona_id FROM followers');
+    return rows.map((r) => r.persona_id);
+  }
+  async addFollower(personaId: string): Promise<void> {
+    await this.db.run('INSERT OR IGNORE INTO followers (persona_id, created_at) VALUES (?, ?)', [personaId, new Date().toISOString()]);
+  }
+  async removeFollower(personaId: string): Promise<void> {
+    await this.db.run('DELETE FROM followers WHERE persona_id = ?', [personaId]);
+  }
   async isMuted(personaId: string): Promise<boolean> {
     const row = await this.selectOne<{ persona_id: string }>('SELECT persona_id FROM mutes WHERE persona_id = ?', [personaId]);
     return !!row;
@@ -538,6 +549,38 @@ export class Store {
   async isReacted(postId: string, personaId: string, kind: 'like' | 'repost'): Promise<boolean> {
     const row = await this.selectOne<{ id: string }>('SELECT id FROM reactions WHERE post_id = ? AND persona_id = ? AND kind = ?', [postId, personaId, kind]);
     return !!row;
+  }
+
+  async listReactionAuthors(postId: string, kind: 'like' | 'repost'): Promise<Array<{ id: string; displayName: string; handle: string }>> {
+    // No JOIN: the web fallback engine only supports single-table SELECT.
+    const reacted = await this.query<{ persona_id: string }>(
+      'SELECT persona_id FROM reactions WHERE post_id = ? AND kind = ? ORDER BY created_at ASC',
+      [postId, kind],
+    );
+    const ids = reacted.map((r) => r.persona_id);
+    if (ids.length === 0) return [];
+    const personas = await this.listPersonas();
+    const byId = new Map(personas.map((p) => [p.id, p]));
+    const out: Array<{ id: string; displayName: string; handle: string }> = [];
+    for (const id of ids) {
+      const p = byId.get(id);
+      if (id === 'user') out.push({ id: 'user', displayName: 'You', handle: 'you' });
+      else if (p) out.push({ id: p.id, displayName: p.displayName, handle: p.handle });
+    }
+    return out;
+  }
+
+  /** Recompute posts.likes/reposts from the reactions table (single source of truth). */
+  async recountReactions(postId: string): Promise<void> {
+    // No GROUP BY: the web fallback engine only supports plain SELECT.
+    const rows = await this.query<{ kind: string }>('SELECT kind FROM reactions WHERE post_id = ?', [postId]);
+    let likes = 0;
+    let reposts = 0;
+    for (const r of rows) {
+      if (r.kind === 'like') likes += 1;
+      if (r.kind === 'repost') reposts += 1;
+    }
+    await this.db.run('UPDATE posts SET likes = ?, reposts = ? WHERE id = ?', [likes, reposts, postId]);
   }
 
   // Bookmarks

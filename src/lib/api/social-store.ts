@@ -72,10 +72,12 @@ export class SocialStore {
 
   async toggleLike(postId: string, personaId = 'user'): Promise<void> {
     await this.store.toggleReaction(postId, personaId, 'like');
+    await this.store.recountReactions(postId);
   }
 
   async toggleRepost(postId: string, personaId = 'user'): Promise<void> {
     await this.store.toggleReaction(postId, personaId, 'repost');
+    await this.store.recountReactions(postId);
   }
 
   async isLiked(postId: string, personaId = 'user'): Promise<boolean> {
@@ -84,5 +86,13 @@ export class SocialStore {
 
   async isReposted(postId: string, personaId = 'user'): Promise<boolean> {
     return this.store.isReacted(postId, personaId, 'repost');
+  }
+
+  async listLikers(postId: string): Promise<Array<{ id: string; displayName: string; handle: string }>> {
+    return this.store.listReactionAuthors(postId, 'like');
+  }
+
+  async listReposters(postId: string): Promise<Array<{ id: string; displayName: string; handle: string }>> {
+    return this.store.listReactionAuthors(postId, 'repost');
   }
 }

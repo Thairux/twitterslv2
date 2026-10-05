@@ -4,7 +4,7 @@ import { BookmarkButton } from './BookmarkButton';
 import { LikeButton } from './LikeButton';
 import { RepostButton } from './RepostButton';
 import { useBlobUrl } from '../lib/api/use-blob-url';
-import { useNativeFiles } from '../lib/api';
+import { useNativeFiles, useApi } from '../lib/api';
 import { useEffect, useState } from 'react';
 import { extractOpenGraph } from '../lib/api/opengraph';
 
@@ -24,9 +24,25 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
   const timeLabel = new Date(post.createdAt).toLocaleString();
   const truncated = post.body.length > 280 ? post.body.slice(0, 277) + '...' : post.body;
   const nativeFiles = useNativeFiles();
+  const { socialStore } = useApi();
   const mediaUrl = useBlobUrl(nativeFiles, post.imagePath || undefined);
   const showMedia = mediaUrl || post.imagePrompt;
   const [ogPreview, setOgPreview] = useState<{ title?: string; description?: string; image?: string; url?: string } | null>(null);
+  const [likeCount, setLikeCount] = useState(post.likes);
+  const [repostCount, setRepostCount] = useState(post.reposts);
+  const [showLikers, setShowLikers] = useState(false);
+  const [likers, setLikers] = useState<Array<{ id: string; displayName: string; handle: string }>>([]);
+
+  async function toggleLikers() {
+    if (!showLikers) {
+      try {
+        setLikers(await socialStore.listLikers(post.id));
+      } catch {
+        setLikers([]);
+      }
+    }
+    setShowLikers((prev) => !prev);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -164,19 +180,37 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
           ))}
         </div>
       )}
-      <div className="post-actions">
-        <span>{post.likes} likes</span>
-        <span>{post.reposts} reposts</span>
+      <div className="post-actions" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+        <button
+          className="btn"
+          data-testid={`likers-toggle-${post.id}`}
+          style={{ fontSize: 10, padding: '2px 8px' }}
+          onClick={toggleLikers}
+          title="See who liked this"
+        >
+          ♥ {likeCount}
+        </button>
+        <span className="meta">↻ {repostCount}</span>
         {isUser && onEdit && (
           <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => onEdit(post.id)}>Edit</button>
         )}
         {onQuote && (
           <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => onQuote(post.id)}>Quote</button>
         )}
-        <LikeButton postId={post.id} />
-        <RepostButton postId={post.id} />
+        <LikeButton postId={post.id} onChange={(liked) => setLikeCount((n) => n + (liked ? 1 : -1))} />
+        <RepostButton postId={post.id} onChange={(reposted) => setRepostCount((n) => n + (reposted ? 1 : -1))} />
         <BookmarkButton postId={post.id} />
       </div>
+      {showLikers && (
+        <div className="file-item" data-testid={`likers-list-${post.id}`}>
+          {likers.length === 0 && <span className="meta">No likes yet.</span>}
+          {likers.map((u) => (
+            <div key={u.id} className="meta" style={{ marginTop: 2 }}>
+              ♥ {u.displayName} <span className="meta">@{u.handle}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

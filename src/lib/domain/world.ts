@@ -12,7 +12,7 @@ export function canStoreMemory(consented: boolean): boolean {
   return consented === true;
 }
 
-export const WORLD_CAP = 50;
+export const WORLD_CAP = 60;
 export const WEEKLY_SPAWN = 1;
 
 export interface WorldState {
