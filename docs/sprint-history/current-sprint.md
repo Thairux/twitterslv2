@@ -63,3 +63,4 @@ Multimodal routing and sidecar wiring are implemented. Remaining work:
 {"timestamp":"2026-10-05T15:07:01.775Z","sprint":"fixbatch","file":"src/native/inference.ts","action":"browser-safe local runner"}
 {"timestamp":"2026-10-05T15:07:02.069Z","sprint":"fixbatch","file":"tests/e2e/app-exploration.spec.ts","action":"usability bug-hunt spec"}
 {"timestamp":"2026-10-05T15:07:02.459Z","sprint":"fixbatch","file":".agents/verify-release.js","action":"working release gate + version 1.0.3"}
+{"timestamp":"2026-10-05T15:22:38.918Z","sprint":"release-1.0.4","file":"android/build.gradle","action":"pin llama plugin to installed NDK 28"}

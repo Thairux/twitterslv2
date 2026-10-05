@@ -1,0 +1,19 @@
+{
+  "version": "1.0.4",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Full native APK including llama-cpp-capacitor on-device inference",
+    "NDK 28.2.13676358 override for the llama plugin (android/build.gradle)",
+    "Android SDK licenses accepted"
+  ],
+  "artifacts": [
+    "releases/1.0.4/twitterslv2-1.0.4-release-unsigned.apk"
+  ]
+}
