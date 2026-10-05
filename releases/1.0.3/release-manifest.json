@@ -1,0 +1,23 @@
+{
+  "version": "1.0.3",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Instant catalogue tab with lazy GGUF loading",
+    "Automatic endpoint discovery with multi-path probing",
+    "Model-id field with Kilo step-3.7-flash:free preset",
+    "Endpoint test chat and browser-safe local model runs",
+    "Friend auto-greeting and auto-replies in DMs",
+    "Card-header overflow fix for narrow screens",
+    "Registered release rule/skill and working release verifier"
+  ],
+  "artifacts": [
+    "releases/1.0.3/twitterslv2-1.0.3-release-unsigned.apk"
+  ]
+}

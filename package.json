@@ -1,7 +1,7 @@
 {
   "name": "twitterslv2",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "TwitterSL v2 — local-first fake-Twitter island sim, Capacitor + Vite + React port of v1 (Expo).",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "lint": "eslint src --ext .ts,.tsx",
+    "release:verify": "node .agents/verify-release.js",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios"

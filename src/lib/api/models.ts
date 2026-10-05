@@ -40,6 +40,11 @@ export class ModelService {
     }
   }
 
+  /**
+   * Static curated catalogue — returns instantly without network.
+   * GGUF file lists are loaded lazily per repo via `listRepoGgufs()`
+   * so the Catalogue tab never renders blank while HF is probed.
+   */
   async listCatalogue(): Promise<CatalogueEntry[]> {
     const raw = [
       { id: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF', author: 'Qwen', modelName: 'Qwen2.5-0.5B-Instruct-GGUF', modelType: 'chat' as const },
@@ -57,19 +62,27 @@ export class ModelService {
     for (const entry of raw) {
       if (downloadedRepos.has(entry.id)) continue;
       try {
-        const parsed = CatalogueEntrySchema.parse(entry);
-        try {
-          const siblings = await listRepoGgufs(entry.id);
-          parsed.siblings = siblings;
-        } catch {
-          // keep catalogue entry even if GGUF enumeration fails
-        }
-        validated.push(parsed);
+        validated.push(CatalogueEntrySchema.parse(entry));
       } catch {
         // skip invalid catalogue entries
       }
     }
     return validated;
+  }
+
+  /** Best-effort GGUF enrichment for catalogue entries (parallel, never throws). */
+  async enrichCatalogue(entries: CatalogueEntry[]): Promise<CatalogueEntry[]> {
+    const out = await Promise.all(
+      entries.map(async (entry) => {
+        try {
+          const siblings = await listRepoGgufs(entry.id);
+          return { ...entry, siblings };
+        } catch {
+          return entry;
+        }
+      }),
+    );
+    return out;
   }
 
   async listDownloads(): Promise<DownloadedModel[]> {

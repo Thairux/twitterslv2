@@ -55,3 +55,11 @@ Multimodal routing and sidecar wiring are implemented. Remaining work:
 - Optional: wire image generation into Composer/PostCard flows.
 - Optional: integrate newspaper/OG extraction into feed links.
 
+{"timestamp":"2026-10-05T15:07:00.968Z","sprint":"fixbatch","file":"src/lib/api/model-client.ts","action":"multi-path discovery + model id wiring"}
+{"timestamp":"2026-10-05T15:07:01.138Z","sprint":"fixbatch","file":"src/lib/api/models.ts","action":"instant catalogue, lazy GGUF enrich"}
+{"timestamp":"2026-10-05T15:07:01.301Z","sprint":"fixbatch","file":"src/pages/ModelsPage.tsx","action":"loading/empty states, overflow fix, testids"}
+{"timestamp":"2026-10-05T15:07:01.486Z","sprint":"fixbatch","file":"src/pages/SettingsPage.tsx","action":"auto-discovery, kilo preset, test chat, local run"}
+{"timestamp":"2026-10-05T15:07:01.628Z","sprint":"fixbatch","file":"src/pages/FriendPage.tsx","action":"auto-greeting + auto-reply"}
+{"timestamp":"2026-10-05T15:07:01.775Z","sprint":"fixbatch","file":"src/native/inference.ts","action":"browser-safe local runner"}
+{"timestamp":"2026-10-05T15:07:02.069Z","sprint":"fixbatch","file":"tests/e2e/app-exploration.spec.ts","action":"usability bug-hunt spec"}
+{"timestamp":"2026-10-05T15:07:02.459Z","sprint":"fixbatch","file":".agents/verify-release.js","action":"working release gate + version 1.0.3"}

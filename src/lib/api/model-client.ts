@@ -10,6 +10,8 @@ export interface ModelClientOptions {
   chatApiKey?: string;
   imageGenEndpoint?: string;
   captionEndpoint?: string;
+  /** Model id sent as `model` in chat requests (e.g. Kilo gateway ids). */
+  defaultModel?: string;
 }
 
 export class ConnectionError extends Error {}
@@ -22,20 +24,26 @@ export class ModelClient {
   readonly chatApiKey?: string;
   readonly imageGenEndpoint?: string;
   readonly captionEndpoint?: string;
+  readonly defaultModel?: string;
 
   constructor(endpoint: string, apiKey?: string, opts: ModelClientOptions = {}) {
     this.chatEndpoint = opts.chatEndpoint ?? endpoint;
     this.chatApiKey = opts.chatApiKey ?? apiKey;
     this.imageGenEndpoint = opts.imageGenEndpoint;
     this.captionEndpoint = opts.captionEndpoint;
+    this.defaultModel = opts.defaultModel;
   }
 
-  async chat(messages: Array<{ role: string; content: string }>): Promise<string> {
+  async chat(
+    messages: Array<{ role: string; content: string }>,
+    opts: { model?: string } = {},
+  ): Promise<string> {
     if (!this.chatEndpoint) {
       throw new ConnectionError('Model endpoint URL is empty');
     }
     const base = this.chatEndpoint.replace(/\/$/, '');
     const url = `${base}/v1/chat/completions`;
+    const model = opts.model ?? this.defaultModel;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -45,7 +53,7 @@ export class ModelClient {
           'Content-Type': 'application/json',
           ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ ...(model ? { model } : {}), messages }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -130,26 +138,36 @@ export class ModelClient {
   async listModels(): Promise<Array<{ id: string; name?: string }>> {
     if (!this.chatEndpoint) return [];
     const base = this.chatEndpoint.replace(/\/$/, '');
-    const url = `${base}/v1/models`;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15_000);
-      const res = await fetch(url, {
-        headers: {
-          ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
-        },
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (!res.ok) return [];
-      const json = (await res.json()) as Record<string, unknown>;
-      const data = json?.data as Array<Record<string, unknown>> | undefined;
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter((item): item is { id: string; name?: string } => typeof item.id === 'string')
-        .map((item) => ({ id: item.id, name: typeof item.name === 'string' ? item.name : undefined }));
-    } catch {
-      return [];
+    // Probe OpenAI-compatible paths first, then llama.cpp-style paths.
+    const paths = ['/v1/models', '/models'];
+    for (const p of paths) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+        const res = await fetch(`${base}${p}`, {
+          headers: {
+            ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!res.ok) continue;
+        const json = (await res.json()) as Record<string, unknown>;
+        const raw = Array.isArray(json)
+          ? (json as Array<Record<string, unknown>>)
+          : ((json?.data as Array<Record<string, unknown>> | undefined) ?? []);
+        if (!Array.isArray(raw) || raw.length === 0) continue;
+        const models = raw
+          .filter((item) => typeof item.id === 'string' || typeof item.name === 'string')
+          .map((item) => ({
+            id: String(item.id ?? item.name),
+            name: typeof item.name === 'string' ? item.name : undefined,
+          }));
+        if (models.length > 0) return models;
+      } catch {
+        // try next path
+      }
     }
+    return [];
   }
 }

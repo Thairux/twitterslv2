@@ -223,6 +223,17 @@ body {
   display: flex;
   gap: 8px;
   margin-top: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.field-row > .input-field,
+.field-row > select {
+  min-width: 0;
+}
+
+.field-row > .btn {
+  flex-shrink: 0;
 }
 
 .field-stack {

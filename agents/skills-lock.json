@@ -15,7 +15,8 @@
     "definition-of-done",
     "handoff",
     "gap-critique",
-    "demo-source-of-truth"
+    "demo-source-of-truth",
+    "release-manager"
   ],
   "rules": [
     "00-filesystem-truth.md",
@@ -29,7 +30,8 @@
     "08-design-tokens.md",
     "09-demo-source-of-truth.md",
     "10-verify-before-done.md",
-    "11-session-continuity.md"
+    "11-session-continuity.md",
+    "12-release-apk-version.md"
   ],
   "hooks": ["agents/hooks/post-file-change-hook.js"],
   "version": "1.0.0",

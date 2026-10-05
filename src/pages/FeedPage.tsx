@@ -56,6 +56,11 @@ export function FeedPage() {
       {posts.map((post) => (
         <PostCard key={post.id} post={post} poll={polls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
       ))}
+      {posts.length === 0 && (
+        <p className="meta" data-testid="feed-empty">
+          No posts yet. Be the first to post, or visit Settings → Background Simulation for a friend ping.
+        </p>
+      )}
     </div>
   );
 }

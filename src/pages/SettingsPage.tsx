@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { Store } from '../lib/api/store';
 import type { Secrets } from '../lib/api/secrets';
+import type { FilesAdapter } from '../native/files';
+import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
 import { exportAllData } from '../lib/api/export';
 
@@ -14,7 +16,9 @@ interface SettingsPageProps {
   };
   client?: {
     listModels: () => Promise<Array<{ id: string; name?: string }>>;
+    chat: (messages: Array<{ role: string; content: string }>, opts?: { model?: string }) => Promise<string>;
   };
+  nativeFiles?: FilesAdapter;
 }
 
 interface PendingMemory {
@@ -60,7 +64,7 @@ function MemoryApproval({ store }: { store: Store }) {
   );
 }
 
-export function SettingsPage({ store, secrets, modelService, client }: SettingsPageProps) {
+export function SettingsPage({ store, secrets, modelService, client, nativeFiles }: SettingsPageProps) {
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [imageGenEndpoint, setImageGenEndpoint] = useState('');
@@ -77,9 +81,15 @@ export function SettingsPage({ store, secrets, modelService, client }: SettingsP
   const [simLog, setSimLog] = useState('');
 
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [modelIdInput, setModelIdInput] = useState('');
   const [localModels, setLocalModels] = useState<Array<{ id: string; repo: string; path: string; sizeBytes: number; recRamGb: number }>>([]);
   const [endpointModels, setEndpointModels] = useState<Array<{ id: string; name?: string }>>([]);
   const [discovering, setDiscovering] = useState(false);
+  const [discoverStatus, setDiscoverStatus] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState('');
+  const [runningLocal, setRunningLocal] = useState(false);
+  const autoDiscoveredFor = useRef<string | null>(null);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -96,6 +106,7 @@ export function SettingsPage({ store, secrets, modelService, client }: SettingsP
         setImageGenEndpoint(imgEp ?? '');
         setCaptionEndpoint(capEp ?? '');
         setSelectedModel(selModel);
+        setModelIdInput(selModel ?? '');
         const profile = await store.getUserProfile();
         setDisplayName(profile.displayName);
         setBio(profile.bio);
@@ -117,15 +128,90 @@ export function SettingsPage({ store, secrets, modelService, client }: SettingsP
   }, [store, secrets, modelService]);
 
   async function discoverModels() {
+    if (!client) {
+      setDiscoverStatus('No model client configured.');
+      return;
+    }
+    if (!endpoint.trim()) {
+      setDiscoverStatus('Enter a Model Endpoint URL first, then discover.');
+      return;
+    }
     setDiscovering(true);
     setError('');
+    setDiscoverStatus('Probing /v1/models and /models…');
     try {
-      const models = client ? await client.listModels() : [];
+      const models = await client.listModels();
       setEndpointModels(models);
+      autoDiscoveredFor.current = endpoint.trim();
+      setDiscoverStatus(
+        models.length > 0
+          ? `Found ${models.length} model${models.length === 1 ? '' : 's'}.`
+          : 'Endpoint answered but listed no models. Type the model id manually below.',
+      );
     } catch (e) {
-      setError(`Discovery failed: ${e instanceof Error ? e.message : String(e)}`);
+      setDiscoverStatus(`Discovery failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setDiscovering(false);
+    }
+  }
+
+  // Automatic discovery: probe once per endpoint value so the picker
+  // populates itself instead of waiting for a manual tap.
+  useEffect(() => {
+    if (client && endpoint.trim() && autoDiscoveredFor.current !== endpoint.trim()) {
+      discoverModels();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, endpoint]);
+
+  async function handleTestChat() {
+    if (!client) {
+      setError('No model client configured.');
+      return;
+    }
+    if (!endpoint.trim()) {
+      setError('Enter a Model Endpoint URL first.');
+      return;
+    }
+    const model = modelIdInput.trim() || selectedModel || undefined;
+    setTesting(true);
+    setError('');
+    setTestResult('');
+    try {
+      if (model) await secrets.setSelectedModel(model);
+      if (model) setSelectedModel(model);
+      const reply = await client.chat(
+        [{ role: 'user', content: 'Reply with exactly: OK' }],
+        model ? { model } : {},
+      );
+      setTestResult(`[endpoint reply] ${reply}`);
+    } catch (e) {
+      setError(`Test chat failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function handleRunLocal() {
+    if (!nativeFiles) {
+      setError('File storage is unavailable.');
+      return;
+    }
+    const local = localModels.find((m) => m.id === selectedModel) ?? localModels[0];
+    if (!local) {
+      setError('No downloaded model selected. Download one from the Models tab first.');
+      return;
+    }
+    setRunningLocal(true);
+    setError('');
+    setTestResult('');
+    try {
+      const res = await runLocalModel(nativeFiles, local.path, 'Say hello in one short sentence.');
+      setTestResult(`${res.simulated ? '[browser-sim] ' : '[on-device] '}${res.text}`);
+    } catch (e) {
+      setError(`Local run failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setRunningLocal(false);
     }
   }
 
@@ -184,6 +270,7 @@ export function SettingsPage({ store, secrets, modelService, client }: SettingsP
 
   async function handleSelectModel(modelId: string) {
     setSelectedModel(modelId);
+    setModelIdInput(modelId);
     try {
       await secrets.setSelectedModel(modelId);
     } catch (e) {
@@ -306,45 +393,82 @@ export function SettingsPage({ store, secrets, modelService, client }: SettingsP
 
       <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Model Selector</h3>
-      <p className="meta">
+      <p className="meta" data-testid="selected-model">
         Current selection: <b>{selectedModel ?? 'none'}</b>
       </p>
 
-      {endpoint && (
-        <div style={{ marginBottom: 12 }}>
-          <label><b>Endpoint Models</b> <span className="meta">(discover from {endpoint})</span>
-            <div className="field-row" style={{ marginTop: 4 }}>
-              <button className="btn" onClick={discoverModels} disabled={discovering}>
-                {discovering ? 'Discovering…' : 'Discover Models'}
-              </button>
-            </div>
-          </label>
-          {endpointModels.length > 0 && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {endpointModels.map((m) => (
-                <div key={m.id} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{m.name ?? m.id}</span>
-                  <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleSelectModel(m.id)}>
-                    {selectedModel === m.id ? 'Selected' : 'Select'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {endpointModels.length === 0 && !discovering && (
-            <p className="meta" style={{ marginTop: 4 }}>No models discovered yet. Click Discover Models.</p>
-          )}
+      <label><b>Model ID</b> <span className="meta">(sent with endpoint requests)</span>
+        <div className="field-row" style={{ marginTop: 4 }}>
+          <input
+            type="text"
+            value={modelIdInput}
+            onChange={(e) => setModelIdInput(e.target.value)}
+            placeholder="e.g. step-3.7-flash:free"
+            className="input-field"
+            data-testid="model-id-input"
+          />
+          <button
+            className="btn"
+            onClick={() => { if (modelIdInput.trim()) handleSelectModel(modelIdInput.trim()); }}
+            disabled={!modelIdInput.trim()}
+          >
+            Use
+          </button>
         </div>
-      )}
+      </label>
+      <p className="help-text">
+        For cloud gateways (e.g. Kilo), paste the gateway URL into Model Endpoint above,
+        add your API key, then either Discover or type the model id
+        (e.g. <i>step-3.7-flash:free</i>) here. Local GGUF downloads need no endpoint or key.
+      </p>
+      <div className="field-row" style={{ marginTop: 4 }}>
+        <button
+          className="btn"
+          style={{ fontSize: 11, padding: '4px 8px' }}
+          onClick={() => { setModelIdInput('step-3.7-flash:free'); handleSelectModel('step-3.7-flash:free'); }}
+        >
+          Kilo: step-3.7-flash:free
+        </button>
+        <button className="btn" style={{ fontSize: 11, padding: '4px 8px' }} onClick={handleTestChat} disabled={testing} data-testid="test-chat-btn">
+          {testing ? 'Testing…' : 'Send test chat'}
+        </button>
+        <button className="btn" style={{ fontSize: 11, padding: '4px 8px' }} onClick={handleRunLocal} disabled={runningLocal} data-testid="run-local-btn">
+          {runningLocal ? 'Running…' : 'Run local model'}
+        </button>
+      </div>
+      {testResult && <p className="meta" data-testid="test-result" style={{ marginTop: 4, wordBreak: 'break-word' }}>{testResult}</p>}
+
+      <div style={{ marginBottom: 12, marginTop: 12 }}>
+        <label><b>Endpoint Models</b> <span className="meta">(auto-discovered{endpoint ? ` from ${endpoint}` : ''})</span>
+          <div className="field-row" style={{ marginTop: 4 }}>
+            <button className="btn" onClick={discoverModels} disabled={discovering} data-testid="discover-btn">
+              {discovering ? 'Discovering…' : 'Discover Models'}
+            </button>
+          </div>
+        </label>
+        {discoverStatus && <p className="meta" data-testid="discover-status" style={{ marginTop: 4 }}>{discoverStatus}</p>}
+        {endpointModels.length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }} data-testid="endpoint-models">
+            {endpointModels.map((m) => (
+              <div key={m.id} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span style={{ minWidth: 0, overflow: 'hidden', wordBreak: 'break-all' }}>{m.name ?? m.id}</span>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }} onClick={() => handleSelectModel(m.id)}>
+                  {selectedModel === m.id ? 'Selected' : 'Select'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div>
         <label><b>Downloaded Local Models</b></label>
         {modelService && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
             {localModels.map((m) => (
-              <div key={m.id} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{m.repo} <span className="meta">({(m.sizeBytes / (1024 * 1024)).toFixed(1)} MB)</span></span>
-                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleSelectModel(m.id)}>
+              <div key={m.id} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span style={{ minWidth: 0, overflow: 'hidden', wordBreak: 'break-all' }}>{m.repo} <span className="meta">({(m.sizeBytes / (1024 * 1024)).toFixed(1)} MB)</span></span>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }} onClick={() => handleSelectModel(m.id)}>
                   {selectedModel === m.id ? 'Selected' : 'Select'}
                 </button>
               </div>

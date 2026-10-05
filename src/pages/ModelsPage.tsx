@@ -26,6 +26,7 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
   const [progressMap, setProgressMap] = useState<Record<string, { downloadedBytes: number; sizeBytes: number; status: string; filename?: string }>>({});
   const [error, setError] = useState('');
   const [catalogue, setCatalogue] = useState<Array<{ id: string; author: string; modelName: string; siblings?: Array<{ filename: string; size: number }> }>>([]);
+  const [loadingCatalogue, setLoadingCatalogue] = useState(false);
 
   useEffect(() => {
     if (tab === 'down') {
@@ -44,12 +45,15 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
       }).catch(() => {});
     }
     if (tab === 'cat') {
+      setLoadingCatalogue(true);
+      setError('');
       modelService.listCatalogue()
         .then(setCatalogue)
         .catch((err) => {
           setError(err instanceof Error ? err.message : 'Failed to load catalogue');
           setCatalogue([]);
-        });
+        })
+        .finally(() => setLoadingCatalogue(false));
     }
   }, [tab, modelService]);
 
@@ -253,13 +257,13 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
           </div>
           <div>
             {results.map((r) => (
-              <div key={r.id} className="model-card">
+              <div key={r.id} className="model-card" data-testid="model-result">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div>
-                    <b>{r.id}</b>
+                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <b style={{ wordBreak: 'break-all' }}>{r.id}</b>
                     <div className="meta">Repo: {r.id}</div>
                   </div>
-                  <div className="field-row">
+                  <div className="field-row" style={{ flexShrink: 0 }}>
                     <button className="btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => openRepo(r.id)}>Open</button>
                     <button className="btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => openSearchResultFiles(r.id, r.siblings)}>Files</button>
                   </div>
@@ -286,9 +290,10 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                               </option>
                             ))}
                           </select>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
                             <button
                               className="btn"
+                              data-testid="download-btn"
                               onClick={() => handleDownload(r.id)}
                               disabled={downloading === `${r.id}/${selectedFile}`}
                             >
@@ -335,22 +340,29 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
               </div>
             ))}
             {!searching && results.length === 0 && query.trim() && (
-              <p className="meta">No results.</p>
+              <p className="meta" data-testid="search-empty">No results.</p>
+            )}
+            {!searching && results.length === 0 && !query.trim() && (
+              <p className="meta">Type a query above and press Go to search Hugging Face for GGUF models.</p>
             )}
           </div>
         </div>
       )}
 
       {tab === 'cat' && (
-        <div className="tab-pane active-pane">
+        <div className="tab-pane active-pane" data-testid="catalogue-list">
+          {loadingCatalogue && <p className="meta">Loading catalogue…</p>}
+          {!loadingCatalogue && catalogue.length === 0 && !error && (
+            <p className="meta" data-testid="catalogue-empty">No models in the catalogue. Downloaded models move to the Downloads tab.</p>
+          )}
           {catalogue.map((c) => (
-            <div key={c.id} className="model-card">
+            <div key={c.id} className="model-card" data-testid="catalogue-entry">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <div>
-                  <b>{c.modelName}</b>
+                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <b style={{ wordBreak: 'break-all' }}>{c.modelName}</b>
                   <div className="meta">Repo: {c.id}</div>
                 </div>
-                <div className="field-row">
+                <div className="field-row" style={{ flexShrink: 0 }}>
                   <button className="btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => openRepo(c.id)}>Open</button>
                   <button className="btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => loadFiles(c.id)}>Files</button>
                 </div>
@@ -377,9 +389,10 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
                             </option>
                           ))}
                         </select>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
                           <button
                             className="btn"
+                            data-testid="download-btn"
                             onClick={() => handleDownload(c.id)}
                             disabled={downloading === `${c.id}/${selectedFile}`}
                           >
