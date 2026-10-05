@@ -69,6 +69,7 @@ function MemoryApproval({ store }: { store: Store }) {
 export function SettingsPage({ store, secrets, modelService, nativeFiles }: SettingsPageProps) {
   const [endpoint, setEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [hasStoredKey, setHasStoredKey] = useState(false);
   const [imageGenEndpoint, setImageGenEndpoint] = useState('');
   const [captionEndpoint, setCaptionEndpoint] = useState('');
   const [consent, setConsent] = useState(false);
@@ -100,6 +101,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       try {
         const ep = await secrets.getEndpoint();
         const key = await secrets.getApiKey();
+        setHasStoredKey(!!key);
         const imgEp = await secrets.getImageGenEndpoint();
         const capEp = await secrets.getCaptionEndpoint();
         const selModel = await secrets.getSelectedModel();
@@ -144,6 +146,10 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
     if (base !== endpoint) setEndpoint(base);
     try {
       await secrets.setEndpoint(base);
+      if (apiKey.trim()) {
+        await secrets.setApiKey(apiKey.trim());
+        setHasStoredKey(true);
+      }
     } catch {
       // non-fatal; callers still use the normalized value in-memory
     }
@@ -268,6 +274,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       await secrets.setEndpoint(endpoint);
       if (apiKey) {
         await secrets.setApiKey(apiKey);
+        setHasStoredKey(true);
       } else {
         await secrets.clearApiKey();
       }
@@ -293,6 +300,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
     setApiKey('');
     try {
       await secrets.clearApiKey();
+      setHasStoredKey(false);
     } catch {
       setError('Failed to clear API key');
     }
@@ -379,6 +387,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
           <button className="btn" onClick={handleClearKey}>Clear</button>
         </div>
       </label>
+      {hasStoredKey && <p className="meta" data-testid="key-stored">[KEY STORED] A key is saved on this device. Type a new one to replace it.</p>}
       <p className="help-text">
         Only required if your Model Endpoint is a cloud service (e.g. OpenAI, Anthropic, custom hosted API).<br/>
         <b>Leave blank for local GGUF inference.</b> Stored securely in device SecureStore — never logged or transmitted elsewhere.

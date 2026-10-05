@@ -66,3 +66,4 @@ Multimodal routing and sidecar wiring are implemented. Remaining work:
 {"timestamp":"2026-10-05T15:22:38.918Z","sprint":"release-1.0.4","file":"android/build.gradle","action":"pin llama plugin to installed NDK 28"}
 {"timestamp":"2026-10-05T15:42:29.593Z","sprint":"release-1.0.5","file":"android/app/build.gradle","action":"signed release config + 1.0.5"}
 {"timestamp":"2026-10-05T16:15:21.652Z","sprint":"release-1.0.7","file":"src/native/files.ts","action":"base64 + appendFile download fix"}
+{"timestamp":"2026-10-05T17:08:11.248Z","sprint":"release-1.0.8","file":"src/lib/api/model-client.ts","action":"CapacitorHttp native bridge for endpoint traffic"}

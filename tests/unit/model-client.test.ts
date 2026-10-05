@@ -115,6 +115,24 @@ describe('ModelClient.chat model wiring', () => {
     expect(JSON.parse(body).model).toBe('step-3.7-flash:free');
   });
 
+  it('retries once on 429 then succeeds', async () => {
+    let calls = 0;
+    stubFetch(() => {
+      calls += 1;
+      if (calls === 1) return jsonResponse({}, 429);
+      return jsonResponse({ choices: [{ message: { content: 'OK' } }] });
+    });
+    const client = new ModelClient('http://127.0.0.1:8080');
+    await expect(client.chat([{ role: 'user', content: 'hi' }], { retryDelayMs: 1 })).resolves.toBe('OK');
+    expect(calls).toBe(2);
+  });
+
+  it('throws RateLimitError after a second 429', async () => {
+    stubFetch(() => jsonResponse({}, 429));
+    const client = new ModelClient('http://127.0.0.1:8080');
+    await expect(client.chat([{ role: 'user', content: 'hi' }], { retryDelayMs: 1 })).rejects.toThrow('Rate limited');
+  });
+
   it('omits model when none is selected', async () => {
     let body = '';
     stubFetch((_url, init) => {

@@ -1,0 +1,20 @@
+{
+  "version": "1.0.8",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Native HTTP bridge for endpoint traffic (CORS-proof Kilo gateway)",
+    "Probe retry on transient network errors",
+    "API key stored indicator and auto-save",
+    "Single retry on HTTP 429 in chat"
+  ],
+  "artifacts": [
+    "releases/1.0.8/twitterslv2-1.0.8-release.apk"
+  ]
+}

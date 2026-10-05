@@ -4,6 +4,7 @@
 // Supports sidecar endpoints for image generation and captioning.
 
 import { Store } from './store';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 export interface ModelClientOptions {
   chatEndpoint?: string;
@@ -36,6 +37,79 @@ export interface EndpointProbe {
   error?: string;
 }
 
+interface SimpleResponse {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+function isNativeHttp(): boolean {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Platform HTTP for JSON APIs. On native, requests go through CapacitorHttp
+ * (OkHttp — no WebView CORS/preflight, which APIs like Kilo's gateway don't
+ * answer). On web, plain fetch with abortable timeouts. Thrown errors are
+ * retried once to ride out transient mobile-network resets.
+ */
+async function apiFetch(
+  url: string,
+  init: { method?: string; headers?: Record<string, string>; body?: string; timeoutMs?: number },
+): Promise<SimpleResponse> {
+  const { method = 'GET', headers = {}, body, timeoutMs = 15_000 } = init;
+  let lastError: unknown = new Error('unreachable');
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      if (isNativeHttp()) {
+        const res = await CapacitorHttp.request({
+          url,
+          method: method as 'GET' | 'POST',
+          headers,
+          data: body,
+          connectTimeout: Math.min(timeoutMs, 15_000),
+          readTimeout: timeoutMs,
+        });
+        const status = res.status;
+        const data = (res as { data?: unknown }).data;
+        return {
+          ok: status >= 200 && status < 300,
+          status,
+          json: async () => {
+            if (typeof data === 'string') return JSON.parse(data);
+            return data;
+          },
+        };
+      }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, {
+          method,
+          headers,
+          ...(body !== undefined ? { body } : {}),
+          signal: controller.signal,
+        });
+        return {
+          ok: res.ok,
+          status: res.status,
+          json: async () => res.json(),
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (err) {
+      lastError = err;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  throw lastError;
+}
+
 export class ModelClient {
   readonly chatEndpoint: string;
   readonly chatApiKey?: string;
@@ -53,7 +127,7 @@ export class ModelClient {
 
   async chat(
     messages: Array<{ role: string; content: string }>,
-    opts: { model?: string } = {},
+    opts: { model?: string; retryDelayMs?: number } = {},
   ): Promise<string> {
     if (!this.chatEndpoint) {
       throw new ConnectionError('Model endpoint URL is empty');
@@ -61,41 +135,48 @@ export class ModelClient {
     const base = this.chatEndpoint.replace(/\/$/, '');
     const url = `${base}/v1/chat/completions`;
     const model = opts.model ?? this.defaultModel;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30_000);
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
-        },
-        body: JSON.stringify({ ...(model ? { model } : {}), messages }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+    const retryDelayMs = opts.retryDelayMs ?? 3000;
+    let rateLimitedOnce = false;
+    for (;;) {
+      try {
+        const res = await apiFetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
+          },
+          body: JSON.stringify({ ...(model ? { model } : {}), messages }),
+          timeoutMs: 30_000,
+        });
 
-      if (res.status === 401 || res.status === 403) {
-        throw new AuthError(`Auth failed (${res.status})`);
+        if (res.status === 401 || res.status === 403) {
+          throw new AuthError(`Auth failed (${res.status})`);
+        }
+        if (res.status === 429) {
+          // Free-tier gateways throttle aggressively — one polite retry.
+          if (!rateLimitedOnce) {
+            rateLimitedOnce = true;
+            await new Promise((r) => setTimeout(r, retryDelayMs));
+            continue;
+          }
+          throw new RateLimitError('Rate limited by endpoint');
+        }
+        if (!res.ok) {
+          throw new ConnectionError(`Endpoint returned ${res.status}`);
+        }
+        const json = (await res.json()) as Record<string, unknown>;
+        const choices = json?.choices as Array<{ message?: { content?: string } }> | undefined;
+        const text = choices?.[0]?.message?.content;
+        if (typeof text !== 'string') {
+          throw new ParseError('Malformed response: missing choices[0].message.content');
+        }
+        return text;
+      } catch (err) {
+        if (err instanceof ConnectionError || err instanceof AuthError || err instanceof RateLimitError || err instanceof ParseError) {
+          throw err;
+        }
+        throw new ConnectionError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
       }
-      if (res.status === 429) {
-        throw new RateLimitError('Rate limited by endpoint');
-      }
-      if (!res.ok) {
-        throw new ConnectionError(`Endpoint returned ${res.status}`);
-      }
-      const json = (await res.json()) as Record<string, unknown>;
-      const choices = json?.choices as Array<{ message?: { content?: string } }> | undefined;
-      const text = choices?.[0]?.message?.content;
-      if (typeof text !== 'string') {
-        throw new ParseError('Malformed response: missing choices[0].message.content');
-      }
-      return text;
-    } catch (err) {
-      if (err instanceof ConnectionError || err instanceof AuthError || err instanceof RateLimitError || err instanceof ParseError) {
-        throw err;
-      }
-      throw new ConnectionError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -169,17 +250,9 @@ export class ModelClient {
     const headers: Record<string, string> = {
       ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
     };
-    const get = async (path: string, timeoutMs: number) => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const res = await fetch(`${base}${path}`, { headers, signal: controller.signal });
-        return res;
-      } finally {
-        clearTimeout(timeout);
-      }
-    };
-    const parseModels = async (res: Response): Promise<Array<{ id: string; name?: string }> | null> => {
+    const get = async (path: string, timeoutMs: number) =>
+      apiFetch(`${base}${path}`, { headers, timeoutMs });
+    const parseModels = async (res: SimpleResponse): Promise<Array<{ id: string; name?: string }> | null> => {
       if (res.status === 401 || res.status === 403) return null;
       if (!res.ok) return null;
       try {
