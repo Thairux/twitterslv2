@@ -6,6 +6,8 @@ export interface Post {
   body: string;
   imagePath?: string;
   imagePrompt?: string;
+  /** Remote image URL (curated pool / user link) — rendered as-is. */
+  imageUrl?: string;
   quotedPostId?: string;
   edited?: boolean;
   createdAt: string;
@@ -22,6 +24,8 @@ export interface Reply {
   body: string;
   imagePath?: string;
   replyOrder: number;
+  /** Optional parent reply — one nesting level, X-style threads. */
+  parentReplyId?: string;
   origin: 'glimmer' | 'offline';
   createdAt: string;
 }
@@ -44,6 +48,7 @@ export interface MakePostOpts {
   edited?: boolean;
   imagePath?: string;
   imagePrompt?: string;
+  imageUrl?: string;
   quotedPostId?: string;
 }
 
@@ -60,6 +65,7 @@ export function makePost(authorId: string, body: string, opts: MakePostOpts = {}
     edited: opts.edited,
     imagePath: opts.imagePath,
     imagePrompt: opts.imagePrompt,
+    imageUrl: opts.imageUrl,
     quotedPostId: opts.quotedPostId,
   };
 }

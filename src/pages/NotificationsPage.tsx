@@ -22,12 +22,33 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
     async function load() {
       try {
         const threads = await dmStore.listInbox('user');
-        const recent = threads.slice(0, 10).map((t) => ({
-          id: t.threadId,
-          text: t.lastDm?.body ?? '',
-          unread: t.unread,
-        }));
-        setItems(recent);
+        const items: Array<{ id: string; text: string; unread: boolean }> = [];
+        // Replies to your posts show up as alerts too (X-style).
+        try {
+          const mine = new Set((await store.listPosts('user')).map((p) => p.id));
+          const names = new Map((await store.listPersonas()).map((p) => [p.id, p.displayName] as const));
+          const replies = (await store.listReplies())
+            .filter((r) => mine.has(r.postId) && r.authorId !== 'user')
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .slice(0, 10);
+          for (const r of replies) {
+            items.push({
+              id: `reply-${r.id}`,
+              text: `${names.get(r.authorId) ?? r.authorId} replied: ${r.body}`,
+              unread: true,
+            });
+          }
+        } catch {
+          // replies are best-effort; DMs below still show
+        }
+        for (const t of threads.slice(0, 10)) {
+          items.push({
+            id: t.threadId,
+            text: t.lastDm?.body ?? '',
+            unread: t.unread,
+          });
+        }
+        setItems(items);
       } catch {
         setItems([]);
       } finally {
@@ -35,7 +56,7 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
       }
     }
     load();
-  }, [dmStore]);
+  }, [dmStore, store]);
 
   useEffect(() => {
     async function hydrate() {

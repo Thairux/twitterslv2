@@ -56,8 +56,7 @@ export const OFFLINE_CROWD_REPLIES: string[] = [
 ];
 
 /** Standalone persona posts (never replies): slice-of-island-life openers. */
-export const OFFLINE_POST_STARTERS: string[] = [
-  'sunrise over the lagoon today looked unreal, wish you all saw it',
+export const OFFLINE_POST_STARTERS: string[] = [  'sunrise over the lagoon today looked unreal, wish you all saw it',
   'low tide revealed a whole new sandbar near the east dock',
   'tried a new coconut recipe, ten out of ten would sip again',
   'the pelicans formed a perfect V this morning, taking it as a good omen',
@@ -81,4 +80,31 @@ export const OFFLINE_POST_STARTERS: string[] = [
   'someone left fresh pineapple at the crossroads stand, island magic',
   'morning swim hit different today, water was glass',
   'counted eleven sails on the horizon, busy day for the harbor',
+];
+
+/**
+ * Real, live-verified photo URLs (picsum seeds — deterministic real photos).
+ * Attached to ambient posts so the timeline carries actual images.
+ */
+export const REAL_PHOTO_URLS: string[] = [
+  'https://picsum.photos/seed/tidepool/600/400',
+  'https://picsum.photos/seed/lagoon/600/400',
+  'https://picsum.photos/seed/harbor/600/400',
+  'https://picsum.photos/seed/reef/600/400',
+  'https://picsum.photos/seed/sunrise/600/400',
+  'https://picsum.photos/seed/storm/600/400',
+  'https://picsum.photos/seed/dock/600/400',
+  'https://picsum.photos/seed/sails/600/400',
+];
+
+/**
+ * Real, live-verified article links (Wikipedia, HTTP 200 at packaging time).
+ * Bodies are written for the link, so unfurled cards read like X link posts.
+ */
+export const REAL_LINK_POSTS: Array<{ body: string; url: string }> = [
+  { body: 'today I learned how atolls actually form, mind blown', url: 'https://en.wikipedia.org/wiki/Atoll' },
+  { body: 'coral reefs are literally underwater cities', url: 'https://en.wikipedia.org/wiki/Coral_reef' },
+  { body: 'ancient navigators crossed whole oceans by stars and swell', url: 'https://en.wikipedia.org/wiki/Polynesian_navigation' },
+  { body: 'lighthouses have the loneliest best job on earth', url: 'https://en.wikipedia.org/wiki/Lighthouse' },
+  { body: 'the moai are still watching, show some respect', url: 'https://en.wikipedia.org/wiki/Moai' },
 ];

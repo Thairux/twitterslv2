@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { attachErrorCollectors } from './console-filter';
 
 test.describe('Gap validation loop', () => {
   test('validate fixes from critique', async ({ page }) => {
     test.setTimeout(120000);
-    const errors: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(msg.text());
-    });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const { consoleErrors: errors, pageErrors } = attachErrorCollectors(page);
 
     await page.goto('/');
     const locked = await page.locator('.input-field[type="password"]').count();
@@ -60,5 +57,6 @@ test.describe('Gap validation loop', () => {
     await page.goto('/#/');
     await page.waitForTimeout(500);
     expect(errors).toEqual([]);
+    expect(pageErrors).toEqual([]);
   });
 });

@@ -116,17 +116,23 @@ export class DmStore {
 
     const result: ThreadInboxItem[] = [];
     for (const [threadId, lastDm] of latestByThread) {
-      const personaId = threadId.replace('user:', '');
+      // Thread ids are `user:<personaId>`; be liberal (ids may contain ':').
+      const personaId = threadId.startsWith('user:')
+        ? threadId.slice('user:'.length)
+        : threadId;
       const persona = personaMap.get(personaId);
-      if (!persona) continue;
+      // Never drop a thread: fall back to the raw id when the persona row
+      // is missing (e.g. removed or spawned personas).
+      const displayName = persona?.displayName ?? personaId;
+      const affinity = persona?.affinity ?? 0.5;
 
       const lastReadAt = readMap.get(threadId);
       result.push({
         threadId,
         otherPersona: {
-          id: persona.id,
-          displayName: persona.displayName,
-          affinity: persona.affinity,
+          id: personaId,
+          displayName,
+          affinity,
         },
         lastDm: {
           id: lastDm.id,

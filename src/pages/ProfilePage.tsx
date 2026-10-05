@@ -17,10 +17,36 @@ export function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
-  const [tab, setTab] = useState<'posts' | 'bookmarks'>('posts');
+  const [tab, setTab] = useState<'posts' | 'bookmarks' | 'following' | 'followers'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [bookmarkPosts, setBookmarkPosts] = useState<Post[]>([]);
   const [followingCount, setFollowingCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingList, setFollowingList] = useState<Array<{ id: string; handle: string; displayName: string; bio: string }>>([]);
+  const [followerList, setFollowerList] = useState<Array<{ id: string; handle: string; displayName: string; bio: string }>>([]);
+
+  async function refreshRelations() {
+    try {
+      const [followingIds, followerIds, all] = await Promise.all([
+        store.listFollowing(),
+        store.listFollowers(),
+        store.listPersonas(),
+      ]);
+      setFollowingCount(followingIds.length);
+      setFollowerCount(followerIds.length);
+      const byId = new Map(all.map((p) => [p.id, p]));
+      const detail = (id: string) => {
+        const p = byId.get(id);
+        return p
+          ? { id: p.id, handle: p.handle, displayName: p.displayName, bio: p.bio }
+          : { id, handle: id, displayName: id, bio: '' };
+      };
+      setFollowingList(followingIds.map(detail));
+      setFollowerList(followerIds.map(detail));
+    } catch (err) {
+      console.error('Failed to load relations:', err);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -34,14 +60,31 @@ export function ProfilePage() {
         const bm = await store.listBookmarks('user');
         const posts = await Promise.all(bm.map((b: Bookmark) => store.getPost(b.postId)));
         setBookmarkPosts(posts.filter((p): p is Post => p != null));
-        const following = await store.listFollowing();
-        setFollowingCount(following.length);
+        await refreshRelations();
       } catch (err) {
         console.error('Failed to load profile:', err);
       }
     }
     load();
   }, [store]);
+
+  async function handleUnfollow(personaId: string) {
+    try {
+      await store.unfollow(personaId);
+      await refreshRelations();
+    } catch (err) {
+      console.error('Unfollow failed:', err);
+    }
+  }
+
+  async function handleFollowBack(personaId: string) {
+    try {
+      await store.follow(personaId);
+      await refreshRelations();
+    } catch (err) {
+      console.error('Follow failed:', err);
+    }
+  }
 
   const handleSave = async () => {
     try {
@@ -125,23 +168,25 @@ export function ProfilePage() {
 
       <div className="status-bar">
         <span><b>{posts.length}</b> Posts</span>
-        <span><b>{followingCount}</b> Following</span>
-        <span><b>0</b> Followers</span>
+        <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setTab('following')}>
+          <b>{followingCount}</b> Following
+        </button>
+        <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setTab('followers')}>
+          <b>{followerCount}</b> Followers
+        </button>
       </div>
 
       <div className="feed-tabs">
-        <button
-          className={tab === 'posts' ? 'active' : ''}
-          onClick={() => setTab('posts')}
-        >
-          Posts
-        </button>
-        <button
-          className={tab === 'bookmarks' ? 'active' : ''}
-          onClick={() => setTab('bookmarks')}
-        >
-          Bookmarks
-        </button>
+        {(['posts', 'bookmarks', 'following', 'followers'] as const).map((t) => (
+          <button
+            key={t}
+            className={tab === t ? 'active' : ''}
+            onClick={() => setTab(t)}
+            data-testid={`profile-tab-${t}`}
+          >
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
       </div>
 
       {tab === 'posts' && posts.map((post) => (
@@ -157,6 +202,42 @@ export function ProfilePage() {
       )}
       {tab === 'bookmarks' && bookmarkPosts.length === 0 && (
         <p className="meta">No bookmarks yet.</p>
+      )}
+
+      {tab === 'following' && (
+        <div className="tab-pane active-pane" data-testid="following-list">
+          {followingList.length === 0 && <p className="meta">You follow no one yet — find islanders in Search.</p>}
+          {followingList.map((p) => (
+            <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)}>
+                <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
+                <div className="meta">@{p.handle}</div>
+              </div>
+              <div className="field-row" style={{ flexShrink: 0, marginTop: 0 }}>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)}>Message</button>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleUnfollow(p.id)} data-testid={`unfollow-btn-${p.id}`}>Unfollow</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'followers' && (
+        <div className="tab-pane active-pane" data-testid="followers-list">
+          {followerList.length === 0 && <p className="meta">No followers yet.</p>}
+          {followerList.map((p) => (
+            <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)}>
+                <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
+                <div className="meta">@{p.handle}</div>
+              </div>
+              <div className="field-row" style={{ flexShrink: 0, marginTop: 0 }}>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)}>Message</button>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleFollowBack(p.id)}>Follow back</button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

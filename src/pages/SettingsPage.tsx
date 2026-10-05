@@ -8,6 +8,7 @@ import { ModelClient, normalizeEndpoint } from '../lib/api/model-client';
 import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
 import { exportAllData } from '../lib/api/export';
+import { lastOpenBackend } from '../native/db';
 
 interface SettingsPageProps {
   store: Store;
@@ -537,6 +538,9 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
 
       <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Data</h3>
+      <p className="meta" data-testid="storage-backend">
+        Storage: <b>{lastOpenBackend === 'native' ? 'on-device database (survives restarts)' : lastOpenBackend === 'web' ? 'in-memory (data is lost on restart!) — reinstall or report this' : 'unknown'}</b>
+      </p>
       <div className="field-row" style={{ flexWrap: 'wrap', gap: 8 }}>
         <button className="btn" onClick={handleExport}>Export Data</button>
         <button className="btn" onClick={() => setShowResetConfirm(true)}>Reset All Data</button>

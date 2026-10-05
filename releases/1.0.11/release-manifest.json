@@ -1,0 +1,21 @@
+{
+  "version": "1.0.11",
+  "releasedAt": "2026-10-05T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Web SQL fallback supports AS aliases (fixes DMs, downloads list, polls)",
+    "X-style nested comment threads with reply-to-reply",
+    "Inbox hardening, live refresh, reply alerts",
+    "1500 persona cap with named weekly spawns",
+    "Persona-to-persona background DMs"
+  ],
+  "artifacts": [
+    "releases/1.0.11/twitterslv2-1.0.11-release.apk"
+  ]
+}

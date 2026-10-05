@@ -15,18 +15,33 @@ export interface PostCardProps {
   onEdit?: (postId: string) => void;
   onVote?: (optionId: string) => void;
   voted?: boolean;
+  replyCount?: number;
 }
 
-export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCardProps) {
+export function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diffMs) || diffMs < 0) return 'now';
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return new Date(iso).toLocaleDateString();
+}
+
+export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCount }: PostCardProps) {
   const isUser = post.authorId === 'user';
   const name = isUser ? 'You' : post.authorId;
   const handle = isUser ? '@you' : `@${post.authorId}`;
-  const timeLabel = new Date(post.createdAt).toLocaleString();
+  const timeLabel = timeAgo(post.createdAt);
   const truncated = post.body.length > 280 ? post.body.slice(0, 277) + '...' : post.body;
   const nativeFiles = useNativeFiles();
   const { socialStore } = useApi();
   const mediaUrl = useBlobUrl(nativeFiles, post.imagePath || undefined);
-  const showMedia = mediaUrl || post.imagePrompt;
+  const remoteUrl = post.imageUrl && /^https?:\/\//.test(post.imageUrl) ? post.imageUrl : undefined;
+  const showMedia = mediaUrl || remoteUrl || post.imagePrompt;
   const [ogPreview, setOgPreview] = useState<{ title?: string; description?: string; image?: string; url?: string } | null>(null);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [repostCount, setRepostCount] = useState(post.reposts);
@@ -124,21 +139,21 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
             marginTop: 8,
             border: '3px solid var(--border)',
             borderRadius: 4,
-            background: mediaUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--border))',
+            background: mediaUrl || remoteUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--border))',
             color: 'var(--bg)',
-            padding: mediaUrl ? 0 : 24,
+            padding: mediaUrl || remoteUrl ? 0 : 24,
             fontSize: 12,
             lineHeight: 1.4,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: mediaUrl ? 120 : undefined,
+            minHeight: mediaUrl || remoteUrl ? 120 : undefined,
             textAlign: 'center',
             overflow: 'hidden',
           }}
         >
-          {mediaUrl ? (
-            <img src={mediaUrl} alt={post.imagePrompt || 'post media'} style={{ width: '100%', borderRadius: 4, display: 'block' }} />
+          {mediaUrl || remoteUrl ? (
+            <img src={mediaUrl ?? remoteUrl} alt={post.imagePrompt || 'post media'} style={{ width: '100%', borderRadius: 4, display: 'block' }} loading="lazy" />
           ) : (
             <div>
               <div style={{ fontSize: 24, marginBottom: 8 }}>Image</div>
@@ -191,6 +206,11 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted }: PostCar
           ♥ {likeCount}
         </button>
         <span className="meta">↻ {repostCount}</span>
+        {replyCount !== undefined && (
+          <Link to={`/post/${post.id}`} className="meta" data-testid={`reply-count-${post.id}`} style={{ textDecoration: 'none' }}>
+            💬 {replyCount}
+          </Link>
+        )}
         {isUser && onEdit && (
           <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => onEdit(post.id)}>Edit</button>
         )}

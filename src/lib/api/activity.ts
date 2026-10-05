@@ -8,7 +8,7 @@ import type { SocialStore } from './social-store';
 import type { DmStore } from './dm-store';
 import { ModelClient } from './model-client';
 import { replyToUserPost } from '../sim-engine';
-import { ambientTick as chatterPostTick } from '../chatter';
+import { ambientTick as chatterPostTick, personaToPersonaDms } from '../chatter';
 import { refreshConfig, getModelEndpoint, getApiKey, getSelectedModel } from '../config';
 import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES } from '../domain/engine';
 
@@ -117,6 +117,15 @@ export async function ambientBeat(
     summary.posts += 1;
   } catch {
     // posting failed — still try interactions below
+  }
+  // Personas also DM each other (agent threads stay out of your inbox,
+  // which stays yours alone — but the island talks behind the scenes).
+  if (Math.random() < 0.3) {
+    try {
+      await personaToPersonaDms(store, live);
+    } catch {
+      // ignore
+    }
   }
   try {
     const personas = (await store.listPersonas()).filter((p) => p.active && p.id !== 'user');

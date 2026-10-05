@@ -15,6 +15,7 @@ export function ThreadPage() {
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [replyBody, setReplyBody] = useState('');
   const [replying, setReplying] = useState(false);
+  const [replyParent, setReplyParent] = useState<{ id: string; name: string } | null>(null);
 
   async function reloadThread() {
     if (!id) return;
@@ -58,10 +59,12 @@ export function ThreadPage() {
         authorId: 'user',
         body: trimmed.slice(0, 280),
         replyOrder: replies.length,
+        parentReplyId: replyParent?.id,
         origin: 'offline',
         createdAt: new Date().toISOString(),
       });
       setReplyBody('');
+      setReplyParent(null);
       await reloadThread();
     } catch (err) {
       console.error('Failed to post reply:', err);
@@ -82,6 +85,23 @@ export function ThreadPage() {
     navigate(`/compose?quote=${encodeURIComponent(postId)}`);
   };
 
+  // One nesting level, X-style: children attach to top-level replies;
+  // deeper replies flatten to the top-level ancestor.
+  const byId = new Map(replies.map((r) => [r.id, r]));
+  function topAncestor(r: Reply): Reply {
+    let cur = r;
+    const seen = new Set<string>([cur.id]);
+    while (cur.parentReplyId && byId.has(cur.parentReplyId) && !seen.has(cur.parentReplyId)) {
+      seen.add(cur.parentReplyId);
+      cur = byId.get(cur.parentReplyId)!;
+    }
+    return cur;
+  }
+  const topLevel = replies.filter((r) => topAncestor(r).id === r.id);
+  function childrenOf(parentId: string): Reply[] {
+    return replies.filter((r) => r.id !== parentId && topAncestor(r).id === parentId);
+  }
+
   if (!post && !replies.length) {
     return <div className="content-area"><p>Post not found.</p></div>;
   }
@@ -98,23 +118,53 @@ export function ThreadPage() {
           value={replyBody}
           onChange={(e) => setReplyBody(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleReply(); }}
-          placeholder="Write a comment…"
+          placeholder={replyParent ? `Reply to ${replyParent.name}…` : 'Write a comment…'}
           className="input-field"
           data-testid="reply-input"
         />
         <button className="btn" onClick={handleReply} disabled={replying || !replyBody.trim()} data-testid="reply-send">
           {replying ? '…' : 'Reply'}
         </button>
+        {replyParent && (
+          <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setReplyParent(null)} data-testid="reply-cancel-parent">
+            × {replyParent.name}
+          </button>
+        )}
       </div>
-      {replies.map((r) => (
-        <div key={r.id} className="post" style={{ marginLeft: 24 }} data-testid={`reply-${r.id}`}>
-          <div className="post-header">
-            <span style={{ fontWeight: 'bold' }}>{names.get(r.authorId) ?? r.authorId}</span>
-            <span className="time">{new Date(r.createdAt).toLocaleString()}</span>
+      {topLevel.map((r) => {
+        const kids = childrenOf(r.id);
+        return (
+          <div key={r.id}>
+            <div className="post" style={{ marginLeft: 24 }} data-testid={`reply-${r.id}`}>
+              <div className="post-header">
+                <span style={{ fontWeight: 'bold' }}>{names.get(r.authorId) ?? r.authorId}</span>
+                <span className="time">{new Date(r.createdAt).toLocaleString()}</span>
+              </div>
+              <div className="post-body">{r.body}</div>
+              <div className="post-actions">
+                <button
+                  className="btn"
+                  style={{ fontSize: 10, padding: '2px 8px' }}
+                  onClick={() => setReplyParent({ id: r.id, name: names.get(r.authorId) ?? r.authorId })}
+                  data-testid={`reply-to-${r.id}`}
+                >
+                  Reply
+                </button>
+              </div>
+            </div>
+            {kids.map((k) => (
+              <div key={k.id} className="post" style={{ marginLeft: 48, borderStyle: 'dashed' }} data-testid={`reply-${k.id}`}>
+                <div className="post-header">
+                  <span style={{ fontWeight: 'bold' }}>{names.get(k.authorId) ?? k.authorId}</span>
+                  <span className="meta">→ {names.get(r.authorId) ?? r.authorId}</span>
+                  <span className="time">{new Date(k.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="post-body">{k.body}</div>
+              </div>
+            ))}
           </div>
-          <div className="post-body">{r.body}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

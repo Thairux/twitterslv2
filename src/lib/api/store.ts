@@ -146,6 +146,7 @@ const PostSchema = z.object({
   body: z.string().max(280),
   imagePath: z.string().optional(),
   imagePrompt: z.string().optional(),
+  imageUrl: z.string().optional(),
   quotedPostId: z.string().optional(),
   edited: z.boolean().optional(),
   createdAt: z.string(),
@@ -162,6 +163,7 @@ const ReplySchema = z.object({
   body: z.string(),
   imagePath: z.string().optional(),
   replyOrder: z.number(),
+  parentReplyId: z.string().optional(),
   origin: z.enum(['glimmer', 'offline']),
   createdAt: z.string(),
 });
@@ -459,8 +461,8 @@ export class Store {
   async createPost(post: Post): Promise<void> {
     const validated = Schemas.Post.parse(post);
     await this.db.run(
-      `INSERT INTO posts (id, author_id, body, image_path, image_prompt, quoted_post_id, edited, created_at, likes, reposts, origin, ai_generated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [validated.id, validated.authorId, validated.body, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.quotedPostId ?? null, validated.edited ? 1 : 0, validated.createdAt, validated.likes, validated.reposts, validated.origin, validated.aiGenerated ? 1 : 0],
+      `INSERT INTO posts (id, author_id, body, image_path, image_prompt, image_url, quoted_post_id, edited, created_at, likes, reposts, origin, ai_generated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [validated.id, validated.authorId, validated.body, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.imageUrl ?? null, validated.quotedPostId ?? null, validated.edited ? 1 : 0, validated.createdAt, validated.likes, validated.reposts, validated.origin, validated.aiGenerated ? 1 : 0],
     );
   }
   mapPostRow(row: any): Post {
@@ -470,6 +472,7 @@ export class Store {
       body: row.body ?? '',
       imagePath: row.image_path ?? undefined,
       imagePrompt: row.image_prompt ?? undefined,
+      imageUrl: row.image_url ?? undefined,
       quotedPostId: row.quoted_post_id ?? undefined,
       edited: row.edited === 1,
       createdAt: row.created_at,
@@ -498,8 +501,8 @@ export class Store {
     const next = { ...existing, ...patch };
     const validated = Schemas.Post.parse(next);
     await this.db.run(
-      `UPDATE posts SET body = ?, edited = ?, image_path = ?, image_prompt = ?, quoted_post_id = ? WHERE id = ?`,
-      [validated.body, validated.edited ? 1 : 0, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.quotedPostId ?? null, id],
+      `UPDATE posts SET body = ?, edited = ?, image_path = ?, image_prompt = ?, image_url = ?, quoted_post_id = ? WHERE id = ?`,
+      [validated.body, validated.edited ? 1 : 0, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.imageUrl ?? null, validated.quotedPostId ?? null, id],
     );
   }
   async deletePost(id: string): Promise<void> {
@@ -510,8 +513,8 @@ export class Store {
   async createReply(reply: Reply): Promise<void> {
     const validated = Schemas.Reply.parse(reply);
     await this.db.run(
-      `INSERT INTO replies (id, post_id, author_id, body, image_path, reply_order, origin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [validated.id, validated.postId, validated.authorId, validated.body, validated.imagePath ?? null, validated.replyOrder, validated.origin, validated.createdAt],
+      `INSERT INTO replies (id, post_id, author_id, body, image_path, reply_order, parent_reply_id, origin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [validated.id, validated.postId, validated.authorId, validated.body, validated.imagePath ?? null, validated.replyOrder, validated.parentReplyId ?? null, validated.origin, validated.createdAt],
     );
   }
   mapReplyRow(row: any): Reply {
@@ -522,6 +525,7 @@ export class Store {
       body: row.body ?? '',
       imagePath: row.image_path ?? undefined,
       replyOrder: row.reply_order ?? 0,
+      parentReplyId: row.parent_reply_id ?? undefined,
       origin: row.origin,
       createdAt: row.created_at,
     });

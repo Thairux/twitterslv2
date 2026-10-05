@@ -22,6 +22,7 @@ export function ComposePage() {
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [imagePath, setImagePath] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
   const previewUrl = useBlobUrl(nativeFiles, imagePath || undefined);
   const [aiPrompt, setAiPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -99,6 +100,7 @@ export function ComposePage() {
         return;
       }
       const id = `p-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      const cleanImageUrl = imageUrl.trim();
       await store.createPost({
         id,
         authorId: 'user',
@@ -111,6 +113,7 @@ export function ComposePage() {
         edited: false,
         aiGenerated: false,
         imagePath: imagePath ?? undefined,
+        imageUrl: /^https?:\/\//.test(cleanImageUrl) ? cleanImageUrl : undefined,
       });
       const validOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
       if (pollQuestion.trim() && validOptions.length >= 2) {
@@ -156,6 +159,16 @@ export function ComposePage() {
       <div className="field-row" style={{ marginBottom: 8 }}>
         <input type="file" accept="image/*" onChange={handleImageChange} className="input-field" />
         {previewUrl && <img src={previewUrl} alt="preview" style={{ width: 48, height: 48, objectFit: 'cover', border: '2px solid var(--border)' }} />}
+      </div>
+      <div className="field-row" style={{ marginBottom: 8 }}>
+        <input
+          type="url"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="Or paste an image URL (https://…)"
+          className="input-field"
+          style={{ flex: 1 }}
+        />
       </div>
       <div className="field-row" style={{ marginBottom: 8 }}>
         <input

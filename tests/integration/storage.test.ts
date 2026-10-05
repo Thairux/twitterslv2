@@ -42,4 +42,35 @@ describe('storage adapter contract', () => {
     await store.removeFollower('coral');
     expect(await store.listFollowers()).toEqual([]);
   });
+
+  test('nested replies round-trip parent ids (migration v11)', async () => {
+    const store = new Store(new Database(await openDatabase('test-nested')));
+    await store.createPost({
+      id: 'p9', authorId: 'user', body: 'hello', createdAt: new Date().toISOString(),
+      likes: 0, reposts: 0, origin: 'offline', edited: false, aiGenerated: false,
+    });
+    await store.createReply({
+      id: 'r1', postId: 'p9', authorId: 'coral', body: 'hi', replyOrder: 0,
+      origin: 'offline', createdAt: new Date().toISOString(),
+    });
+    await store.createReply({
+      id: 'r2', postId: 'p9', authorId: 'user', body: 'hey back', replyOrder: 1,
+      parentReplyId: 'r1', origin: 'offline', createdAt: new Date().toISOString(),
+    });
+    const replies = await store.listReplies('p9');
+    expect(replies.length).toBe(2);
+    expect(replies.find((r) => r.id === 'r2')?.parentReplyId).toBe('r1');
+  });
+
+  test('aliased selects project correctly on all adapters', async () => {
+    const store = new Store(new Database(await openDatabase('test-alias')));
+    await store.upsertPersona({
+      id: 'ax', handle: 'ax', displayName: 'Ax', role: 'peer', vibe: 't',
+      bio: '', avatarSeed: 'ax', affinity: 0.5, active: true, spawnedWeek: 0,
+    });
+    const rows = await store.query<{ id: string; displayName: string }>(
+      'SELECT id, display_name AS displayName FROM personas WHERE id = ?', ['ax'],
+    );
+    expect(rows[0]?.displayName).toBe('Ax');
+  });
 });

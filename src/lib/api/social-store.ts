@@ -95,4 +95,12 @@ export class SocialStore {
   async listReposters(postId: string): Promise<Array<{ id: string; displayName: string; handle: string }>> {
     return this.store.listReactionAuthors(postId, 'repost');
   }
+
+  async getReplyCounts(): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {};
+    for (const r of await this.store.listReplies()) {
+      counts[r.postId] = (counts[r.postId] ?? 0) + 1;
+    }
+    return counts;
+  }
 }

@@ -5,6 +5,7 @@
 // v2 inverts this: the adapter owns platform branching; callers never branch.
 
 import { splitStatements } from '../lib/domain/sql';
+import { Capacitor } from '@capacitor/core';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -173,6 +174,7 @@ class InMemoryEngine {
       const verb = s.split(/\s+/)[0].toUpperCase();
       switch (verb) {
         case 'CREATE': this.execCreate(s); break;
+        case 'ALTER': this.execAlter(s); break;
         case 'DROP': this.execDrop(s); break;
         case 'INSERT': last = this.execInsert(s); break;
         case 'SELECT': last = { rows: this.execSelect(s) }; break;
@@ -244,8 +246,19 @@ class InMemoryEngine {
     throw new Error(`Unsupported CREATE: ${sql}`);
   }
 
-  private execDrop(sql: string): void {
-    const m = sql.match(/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(\w+)/i);
+  private execAlter(sql: string): void {
+    // Additive only: ALTER TABLE <t> ADD COLUMN <def>.
+    const m = sql.match(/^ALTER\s+TABLE\s+(\w+)\s+ADD\s+(?:COLUMN\s+)?([\s\S]*?)\s*;?\s*$/i);
+    if (!m) throw new Error(`Unsupported ALTER: ${sql}`);
+    const [, tableName, colDef] = m;
+    const schema = this.schemas.get(tableName);
+    if (!schema) throw new Error(`Table ${tableName} does not exist`);
+    const parsed = parseColumnDef(colDef.trim());
+    if (!parsed) throw new Error(`Invalid column def: ${colDef}`);
+    if (!schema.some((c) => c.name === parsed.name)) schema.push(parsed);
+  }
+
+  private execDrop(sql: string): void {    const m = sql.match(/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(\w+)/i);
     if (m) {
       const target = this.currentTables();
       target.delete(m[1]);
@@ -323,7 +336,13 @@ class InMemoryEngine {
       const cols = colsStr.split(',').map((c) => c.trim());
       rows = rows.map((row) => {
         const r: Row = {};
-        for (const c of cols) r[c] = row[c];
+        for (const c of cols) {
+          // Support `expr AS alias` (and bare `expr alias`): the native
+          // driver resolves these, but the web fallback must project them.
+          const m = c.match(/^(.+?)\s+(?:AS\s+)?(\w+)$/i);
+          if (m) r[m[2]] = row[m[1].trim()];
+          else r[c] = row[c];
+        }
         return r;
       });
     }
@@ -452,6 +471,9 @@ class WebSQLiteAdapter implements DbAdapter {
 // Factory
 // ---------------------------------------------------------------------------
 
+/** Which backend the last openDatabase() call settled on (for diagnostics UI). */
+export let lastOpenBackend: 'native' | 'web' | null = null;
+
 export async function openDatabase(name: string): Promise<DbAdapter> {
   let CapacitorSQLite: any = null;
   try {
@@ -468,14 +490,28 @@ export async function openDatabase(name: string): Promise<DbAdapter> {
       const db = new CapacitorSQLiteAdapter(conn);
       const { migrate } = await import('../store/migrations');
       await migrate(db);
+      lastOpenBackend = 'native';
       return db;
-    } catch {
-      // connection failed; fall back to web
+    } catch (err) {
+      // Audible only where it matters: on native, a failed open means data
+      // will NOT survive restarts. On web the in-memory fallback is by
+      // design (jeep-sqlite needs a DOM element), so stay quiet.
+      try {
+        if (Capacitor.isNativePlatform()) {
+          console.error(
+            'Native SQLite open failed, falling back to in-memory:',
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      } catch {
+        // ignore diagnostics failures
+      }
     }
   }
 
   const db = new WebSQLiteAdapter(name);
   const { migrate } = await import('../store/migrations');
   await migrate(db);
+  lastOpenBackend = 'web';
   return db;
 }

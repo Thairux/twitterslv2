@@ -1,6 +1,8 @@
 // API: opengraph — structured link metadata extraction (Sprint 7 port).
 // Complements `newspaper.ts` with OG-specific fields when available.
 
+import { apiFetch } from './http';
+
 export interface OpenGraphResult {
   title?: string;
   description?: string;
@@ -13,11 +15,8 @@ export interface OpenGraphResult {
 
 export async function extractOpenGraph(url: string, timeoutMs = 10_000): Promise<OpenGraphResult> {
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-
+    // Native bridge on device (no CORS); plain fetch on web.
+    const res = await apiFetch(url, { timeoutMs });
     if (!res.ok) {
       return { error: `HTTP ${res.status}` };
     }

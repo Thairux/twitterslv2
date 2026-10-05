@@ -14,6 +14,7 @@ export function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [tab, setTab] = useState<'foryou' | 'following'>('foryou');
   const [eventText, setEventText] = useState<string | null>(null);
+  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
   const lastRotatedRef = useRef<number>(0);
 
   useEffect(() => {
@@ -23,6 +24,12 @@ export function FeedPage() {
         const feed = tab === 'foryou' ? await socialStore.rankFeed('user') : await socialStore.listFeedFollowing('user');
         if (cancelled) return;
         setPosts(feed);
+        try {
+          const counts = await socialStore.getReplyCounts();
+          if (!cancelled) setReplyCounts(counts);
+        } catch {
+          // counts are decorative; feed still renders
+        }
         const text = await getActiveEventText(store);
         if (cancelled) return;
         setEventText(text);
@@ -64,7 +71,7 @@ export function FeedPage() {
         <button className={tab === 'following' ? 'active' : ''} onClick={() => setTab('following')}>Following</button>
       </div>
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} poll={polls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
+        <PostCard key={post.id} post={post} poll={polls.get(post.id)} replyCount={replyCounts[post.id] ?? 0} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
       ))}
       {posts.length === 0 && (
         <p className="meta" data-testid="feed-empty">

@@ -13,17 +13,24 @@ export function DMsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const items = await dmStore.listInbox('user');
-        setThreads(items);
+        if (!cancelled) setThreads(items);
       } catch (e) {
         console.error('Failed to load inbox:', e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
+    // Live inbox: pick up new persona DMs without leaving the screen.
+    const timer = setInterval(load, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [dmStore]);
 
   return (

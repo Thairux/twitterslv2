@@ -6,7 +6,7 @@
 
 import { splitStatements } from '../lib/domain/sql';
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 12;
 
 export interface Migration {
   version: number;
@@ -223,5 +223,15 @@ export const MIGRATIONS: Migration[] = [
     version: 10,
     name: 'add-followers',
     sql: splitStatements(`CREATE TABLE IF NOT EXISTS followers (persona_id TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 11,
+    name: 'add-reply-parent',
+    sql: splitStatements(`ALTER TABLE replies ADD COLUMN parent_reply_id TEXT;`),
+  },
+  {
+    version: 12,
+    name: 'add-post-image-url',
+    sql: splitStatements(`ALTER TABLE posts ADD COLUMN image_url TEXT;`),
   },
 ];

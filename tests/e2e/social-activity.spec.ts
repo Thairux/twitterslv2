@@ -70,6 +70,19 @@ test.describe('Social activity loop', () => {
     await page.waitForTimeout(1000);
     await expect(page.getByText(comment).first()).toBeVisible();
 
+    // Nested reply: answer Mimi, expect an indented child.
+    const mimiReply = page.locator('div[data-testid^="reply-r-"]').first();
+    await mimiReply.getByTestId(/reply-to-/).click();
+    await page.waitForTimeout(300);
+    const nested = `Nested hello ${Date.now()}`;
+    await page.getByTestId('reply-input').fill(nested);
+    await page.getByTestId('reply-send').click();
+    await page.waitForTimeout(1000);
+    const child = page.locator('.post', { hasText: nested }).first();
+    await expect(child).toBeVisible();
+    const margin = await child.evaluate((el) => getComputedStyle(el).marginLeft);
+    expect(parseInt(margin, 10)).toBeGreaterThanOrEqual(40);
+
     // New DM: search personas → tap name → thread opens.
     await page.goto('/#/search');
     await page.waitForTimeout(800);

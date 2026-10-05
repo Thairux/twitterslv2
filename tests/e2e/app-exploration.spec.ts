@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { attachErrorCollectors } from './console-filter';
 
 // App exploration: usability + bug hunt. Goal is to discover bugs and verify
 // ease of use — every screen must render something meaningful (never blank),
@@ -7,12 +8,7 @@ import { test, expect } from '@playwright/test';
 test.describe('App exploration (usability bug hunt)', () => {
   test('every hub renders, nothing clips, no JS errors', async ({ page }) => {
     test.setTimeout(180000);
-    const pageErrors: string[] = [];
-    const consoleErrors: string[] = [];
-    page.on('pageerror', (err) => pageErrors.push(err.message));
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') consoleErrors.push(msg.text());
-    });
+    const { consoleErrors, pageErrors } = attachErrorCollectors(page);
 
     async function unlockIfNeeded() {
       const locked = await page.locator('.input-field[type="password"]').count();
@@ -107,6 +103,16 @@ test.describe('App exploration (usability bug hunt)', () => {
     await page.goto('/#/dms');
     await page.waitForTimeout(500);
     await expect(page.locator('.page-title')).toHaveText('Inbox');
+
+    // 4b. Profile shows follower/following tabs with actions.
+    await page.goto('/#/profile');
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: 'Followers', exact: true }).click();
+    await page.waitForTimeout(500);
+    await expect(page.locator('[data-testid="followers-list"]')).toBeVisible();
+    await page.getByRole('button', { name: 'Following', exact: true }).click();
+    await page.waitForTimeout(500);
+    await expect(page.locator('[data-testid="following-list"]')).toBeVisible();
 
     // 4b. Search is one tap away and suggests islanders to follow.
     await page.goto('/#/');
