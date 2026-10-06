@@ -34,8 +34,9 @@ offline" report, and six small audit gaps.
 ## Known limitations (unchanged, approved)
 - Muted words remain a global list; Chatter kept as-is; onboarding is
   manual-URL only; reply-audience gating deferred.
-- No device attached at build time — on-device smoke test not run for this
-  release; install the APK below and report any red screens.
+- No device attached at build time; post-build `adb install -r` update to
+  2.1.0 (versionCode 15) verified on-device, MainActivity focused on launch,
+  logcat FATAL sweep clean. Install the APK below and report any red screens.
 
 ## Artifact
 - `releases/2.1.0/twitterslv2-2.1.0-release.apk` (signed release build)

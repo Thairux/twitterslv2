@@ -6,5 +6,5 @@
   "typecheck": "pass",
   "build": "pass",
   "releaseVerify": "pass",
-  "device": "no device attached at build time; on-device smoke not run"
+  "device": "adb install -r update to 2.1.0 (versionCode 15) OK; MainActivity focused on launch; logcat FATAL sweep clean"
 }
