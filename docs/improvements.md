@@ -185,3 +185,12 @@ Use this template for Loop 1 critique findings.
 | IMP-2.0-06 | OPEN (LOW, deferred w/ approval) | LOW | Muted words | Per-surface scope + expiry deferred; global list retained |
 | IMP-2.0-07 | OPEN (LOW, deferred w/ approval) | LOW | Chatter | Remains feed-adjacent; not removed pending product call |
 | IMP-2.0-08 | OPEN (LOW, deferred w/ approval) | LOW | Onboarding | Manual URL only; no auto-routing (cut-list item 9) |
+
+## 2.1.0 hardening (code-vs-docs audit 2026-10-06, all accepted items implemented)
+
+| ID | Status | Severity | Area | Resolution |
+|---|---|---|---|---|
+| IMP-2.1-01 | CLOSED | HIGH | Brand/icon | TSL neobrutalist icon generated (black + purple `#tsl` plate + yellow/purple shadows): `resources/icons/` masters, all Android mipmap densities, web icons + manifest + favicon |
+| IMP-2.1-02 | CLOSED | MEDIUM | Docs | #tslp spec (`docs/features/tslp-admin.md`), full inventory (`docs/features/app-features.md`), validated gaps (`docs/inprogress/tslp-gaps.md`), sprint I, CHANGELOG 2.0.0 + 2.1.0 |
+| IMP-2.1-03 | CLOSED | MEDIUM | #tslp entry | Discoverability: Me-page `#tslp` entry card (`profile-tslp-entry`) alongside Settings link; tabbar unchanged by design |
+| IMP-2.1-04 | CLOSED | LOW | #tslp detail | Removed dead `likes: 0` stub field from detail post rows |

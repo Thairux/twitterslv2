@@ -4,6 +4,30 @@ All notable changes, newest first. Each version ships a signed release APK
 under `releases/<version>/` and on the
 [GitHub Releases page](https://github.com/Thairux/twitterslv2/releases).
 
+## [2.1.0] — Icon, docs, ambient honesty
+- TSL neobrutalist app icon (black + purple `#tsl` plate + yellow/purple
+  shadows): `resources/icons/` masters, all Android mipmap densities, web
+  icons + manifest + favicon.
+- Docs: #tslp feature spec, full app-feature inventory, validated gaps,
+  sprint I, 2.0.0 changelog entry.
+- Fixed "endpoint OK but personas still offline": live endpoint client
+  re-resolved on every ambient path, model on boot client, honest
+  glimmer/offline origins, Save persists model, Settings ambient status line.
+- #tslp dashboards count today's likes (were all-time); thread/Chatter/quote
+  names; inbox unread dots; Me-page #tslp entry; island-DM matcher fix.
+
+## [2.0.0] — Hybrid migration: X × Threads × iLands (#tslp)
+- #tslp ("twitter sl personas") admin: all-persona phone grid, per-persona
+  Posts / DMs-with-you / DMs-with-island tabs, favorites, global +
+  per-favorite dashboards, Awaken-style friend creator with primary friend.
+- X-style nested comments (collapse, sort, direct-parent labels, reply
+  likes), full notification center with deep links + read state, quote cards,
+  display names, reply/view counts, Seen receipts, drafts, search filters,
+  media tab, remove follower, block-with-cleanup, 1500-persona cap.
+- Schema v14–v17 (`favorites`, `drafts`, `post_views`, `notification_reads`).
+- Known limitations: global-only muted words, Chatter kept, manual-URL
+  onboarding, deferred reply-audience gating.
+
 ## [1.0.12] — Providers, avatars, persistent keys
 - Fixed: API key disappeared after setting (secure-storage read path had no
   Preferences fallback). Added [KEY STORED] indicator.

@@ -1,0 +1,26 @@
+{
+  "version": "2.1.0",
+  "releasedAt": "2026-10-06T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "gates": {
+    "loop1Critique": "pass",
+    "loop2Validation": "pass",
+    "loop3Regression": "pass",
+    "openHighMedium": 0
+  },
+  "features": [
+    "TSL neobrutalist app icon (Android mipmaps + web manifest)",
+    "#tslp spec + full feature inventory + validated gaps docs",
+    "Ambient honesty fix with Settings status line",
+    "Audit S-gaps: names, unread dots, #tslp entry, stats day-filter"
+  ],
+  "artifacts": [
+    "releases/2.1.0/twitterslv2-2.1.0-release.apk"
+  ]
+}

@@ -87,7 +87,10 @@ export function DMsPage() {
                 {t.lastDm.senderId === 'user' ? 'You: ' : ''}{t.lastDm.body}
               </div>
             </div>
-            <div className="meta" style={{ fontSize: 10, flexShrink: 0 }}>
+            <div className="meta" style={{ fontSize: 10, flexShrink: 0, textAlign: 'right' }}>
+              {t.unread && (
+                <span data-testid="inbox-unread" style={{ color: 'var(--accent)', fontWeight: 'bold' }}>● NEW<br /></span>
+              )}
               {formatTime(t.lastDm.createdAt)}
             </div>
           </div>

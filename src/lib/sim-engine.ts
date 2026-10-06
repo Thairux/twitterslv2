@@ -4,6 +4,7 @@
 import { FRIEND_ID, isAllowedTrollLine, AgentCustomization, DEFAULT_AGENT_CUSTOMIZATION } from './domain/persona';
 import { Reply, orderReplies } from './domain/post';
 import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES } from './domain/engine';
+import { noteAmbientFallback, noteAmbientLive } from './api/ambient-status';
 import type { ModelClient } from './api/model-client';
 
 export interface EngineOpts {
@@ -44,6 +45,7 @@ export async function replyToUserPost(
         { role: 'system', content: friendSystemPrompt(custom) },
         { role: 'user', content: body },
       ]);
+      noteAmbientLive();
       replies.push({
         id: `r-${postId}-friend`,
         postId,
@@ -53,7 +55,8 @@ export async function replyToUserPost(
         origin: 'glimmer',
         createdAt: new Date().toISOString(),
       });
-    } catch {
+    } catch (err) {
+      noteAmbientFallback('sim-engine:friend-reply', err);
       replies.push({
         id: `r-${postId}-friend`,
         postId,
@@ -80,13 +83,19 @@ export async function replyToUserPost(
   for (let i = 0; i < active.length; i += 1) {
     const p = active[i];
     let text: string;
+    // Honest origin: pool text after a failed live call must stay 'offline'
+    // so the UI (and diagnostics) never mistakes a fallback for live output.
+    let crowdOrigin: 'glimmer' | 'offline' = 'offline';
     if (opts.modelClient) {
       try {
         text = await opts.modelClient.chat([
           { role: 'system', content: `You are ${p.displayName} (${p.handle}), ${p.vibe}. Reply under 140 chars.` },
           { role: 'user', content: body },
         ]);
-      } catch {
+        crowdOrigin = 'glimmer';
+        noteAmbientLive();
+      } catch (err) {
+        noteAmbientFallback('sim-engine:crowd-reply', err);
         text = pickOffline(OFFLINE_CROWD_REPLIES, postId.length + i);
       }
     } else {
@@ -95,6 +104,7 @@ export async function replyToUserPost(
 
     if (p.role === 'troll' && !isAllowedTrollLine(text)) {
       text = pickOffline(OFFLINE_CROWD_REPLIES, i);
+      crowdOrigin = 'offline';
     }
 
     replies.push({
@@ -103,7 +113,7 @@ export async function replyToUserPost(
       authorId: p.id,
       body: text,
       replyOrder: i + 1,
-      origin: opts.modelClient ? 'glimmer' : 'offline',
+      origin: crowdOrigin,
       createdAt: new Date().toISOString(),
     });
   }

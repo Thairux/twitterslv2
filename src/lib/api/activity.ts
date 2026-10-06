@@ -10,6 +10,7 @@ import { ModelClient } from './model-client';
 import { replyToUserPost } from '../sim-engine';
 import { ambientTick as chatterPostTick, personaToPersonaDms } from '../chatter';
 import { refreshConfig, getModelEndpoint, getApiKey, getSelectedModel } from '../config';
+import { noteAmbientFallback, noteAmbientLive } from './ambient-status';
 import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES } from '../domain/engine';
 
 export type Scheduler = (delayMs: number, fn: () => void | Promise<void>) => void;
@@ -42,8 +43,11 @@ function uniqueReplyId(postId: string, authorId: string): string {
  * Prefer the passed client, but fall back to a freshly resolved one: the
  * boot-time client goes stale the moment the user edits endpoint/key/model.
  */
-async function resolveAmbientClient(preferred?: ModelClient): Promise<ModelClient | undefined> {
-  if (preferred?.chatEndpoint?.trim()) return preferred;
+export async function resolveAmbientClient(_preferred?: ModelClient): Promise<ModelClient | undefined> {
+  // NOTE: the preferred (usually boot-time) client is deliberately NOT
+  // trusted: it may carry an endpoint with a stale-empty key, which 401s
+  // every ambient call into offline pools while manual test chats (built
+  // live from field values) succeed. Always re-resolve from storage.
   try {
     await refreshConfig();
     const endpoint = (await getModelEndpoint()).trim();
@@ -52,7 +56,7 @@ async function resolveAmbientClient(preferred?: ModelClient): Promise<ModelClien
     const model = await getSelectedModel();
     return new ModelClient(endpoint, key ?? undefined, model ? { defaultModel: model } : {});
   } catch {
-    return preferred;
+    return undefined;
   }
 }
 
@@ -148,7 +152,9 @@ export async function ambientBeat(
                   { role: 'user', content: `You are ${persona.displayName} (${persona.handle}), ${persona.vibe}. Reply briefly (under 140 chars) to: ${post.body}` },
                 ]);
                 origin = 'glimmer';
-              } catch {
+                noteAmbientLive();
+              } catch (err) {
+                noteAmbientFallback('activity:ambient-reply', err);
                 text = pool[Math.floor(Math.random() * pool.length)];
               }
             } else {
@@ -212,7 +218,9 @@ export async function randomDmBeat(
           { role: 'user', content: `You are ${persona.displayName}, a kind island friend. Send a short spontaneous DM (under 140 chars).` },
         ]);
         origin = 'glimmer';
-      } catch {
+        noteAmbientLive();
+      } catch (err) {
+        noteAmbientFallback('activity:random-dm', err);
         text = pool[Math.floor(Math.random() * pool.length)];
       }
     } else {

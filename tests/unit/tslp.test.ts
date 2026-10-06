@@ -54,6 +54,19 @@ describe('stats', () => {
     expect(today.dmsToUser).toBe(1);
     expect(today.dmsToPersonas).toBe(1);
   });
+
+  it('counts only today’s likes in the global dashboard', async () => {
+    const store = await seeded();
+    const yesterday = new Date(Date.now() - 86400000).toISOString();
+    await store.run(
+      'INSERT INTO reactions (id, post_id, persona_id, kind, created_at) VALUES (?, ?, ?, ?, ?)',
+      ['rx-old', 'p1', 'mimi', 'like', yesterday],
+    );
+    const today = await todayStats(store);
+    // One like from today (seeded); yesterday's like must not leak in.
+    expect(today.likes).toBe(1);
+    expect((await todayStats(store, yesterday.slice(0, 10))).likes).toBe(1);
+  });
 });
 
 describe('blockPersona', () => {

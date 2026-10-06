@@ -202,6 +202,21 @@ export function ProfilePage() {
         </>
       )}
 
+      <div
+        className="post"
+        style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', background: '#000', marginBottom: 12 }}
+        onClick={() => navigate('/tslp')}
+        data-testid="profile-tslp-entry"
+      >
+        <div style={{ background: '#7b2ff7', border: '2px solid #000', boxShadow: '3px 3px 0 #f5d90a', padding: '2px 8px', fontWeight: 'bold', color: '#fff', fontSize: 13 }}>
+          #tslp
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 'bold', fontSize: 13 }}>twitter sl personas — island admin</div>
+          <div className="meta">Every persona's phone view, island DMs, dashboards, friend creator →</div>
+        </div>
+      </div>
+
       <div className="status-bar">
         <span><b>{posts.length}</b> Posts</span>
         <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setTab('following')}>

@@ -268,6 +268,16 @@ Use this template for Loop 2 validation findings.
 | BUG-2.0-03 | CLOSED | HIGH | Downloads | "Parent folder doesn'"'"'t exist" | `recursive: true` on append path |
 | BUG-2.0-04 | CLOSED | HIGH | Secrets | API key read back empty | Preferences fallback on read + delete paths |
 | BUG-2.0-05 | CLOSED | MEDIUM | Personas | Generic "nonsense" posts | Rich pools + starters + verified media/links + live endpoint |
-| BUG-2.0-06 | CLOSED | MEDIUM | FAB | Half off-screen on phones | `max(16px, Ö)` clamp |
+| BUG-2.0-06 | CLOSED | MEDIUM | FAB | Half off-screen on phones | `max(16px, ÔøΩ)` clamp |
 | BUG-2.0-07 | CLOSED | MEDIUM | Kilo preset | Wrong model id (missing prefix) | `stepfun/step-3.7-flash:free` |
 | BUG-2.0-08 | CLOSED | MEDIUM | Profile | Followers hardcoded 0 | Real Followers/Following tabs with actions |
+
+## 2.1.0 field + audit bugs (fixed, verified by unit + check + build)
+
+| ID | Status | Severity | Area | Symptom | Fix |
+|---|---|---|---|---|---|
+| BUG-2.1-01 | CLOSED | HIGH | Ambient engine | Endpoint Check + test chat OK, personas still on offline pools | Live re-resolution everywhere (`activity.ts`, `background.ts`), model on boot client (`bootstrap.ts`), honest origins (`sim-engine.ts`, `chatter.ts`), Save persists model, `ambient-status.ts` + Settings status line; `tests/unit/ambient-honesty.test.ts` (8) |
+| BUG-2.1-02 | CLOSED | MEDIUM | #tslp dashboards | "Likes given" counted all-time, not today | `stats.ts todayStats` selects `created_at` and day-filters likes |
+| BUG-2.1-03 | CLOSED | MEDIUM | Names | Thread root post, Chatter cards, quote cards showed raw persona ids | `authorName` passed on Thread root + Chatter (via `usePersonaNames` pattern); quote author resolved via `store.getPersona` in `PostCard` |
+| BUG-2.1-04 | CLOSED | LOW | Inbox | No unread indicator on threads | `‚óè NEW` badge from `ThreadInboxItem.unread` (`DMsPage.tsx`) |
+| BUG-2.1-05 | CLOSED | LOW | #tslp admin | Island-DM matcher used substring `includes()` (misattributes overlapping ids) | Segment match on `thread_id.split(':')` (`TslpPage.tsx`) |

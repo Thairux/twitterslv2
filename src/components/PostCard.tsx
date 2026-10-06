@@ -47,6 +47,7 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
   const showMedia = mediaUrl || remoteUrl || post.imagePrompt;
   const [ogPreview, setOgPreview] = useState<{ title?: string; description?: string; image?: string; url?: string } | null>(null);
   const [quoted, setQuoted] = useState<Post | null>(null);
+  const [quotedName, setQuotedName] = useState<string | null>(null);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [repostCount, setRepostCount] = useState(post.reposts);
   const [showLikers, setShowLikers] = useState(false);
@@ -77,12 +78,26 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
     }
     async function loadQuoted() {
       if (!post.quotedPostId) {
-        if (!cancelled) setQuoted(null);
+        if (!cancelled) {
+          setQuoted(null);
+          setQuotedName(null);
+        }
         return;
       }
       try {
         const q = await store.getPost(post.quotedPostId);
-        if (!cancelled) setQuoted(q);
+        if (cancelled) return;
+        setQuoted(q);
+        if (!q || q.authorId === 'user') {
+          setQuotedName(q ? 'You' : null);
+        } else {
+          try {
+            const persona = await store.getPersona(q.authorId);
+            if (!cancelled) setQuotedName(persona?.displayName ?? q.authorId);
+          } catch {
+            if (!cancelled) setQuotedName(q.authorId);
+          }
+        }
       } catch {
         // leave null; raw-id fallback below
       }
@@ -197,7 +212,7 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
             data-testid={`quote-card-${post.id}`}
           >
             <div style={{ fontWeight: 'bold' }}>
-              {quoted.authorId === 'user' ? 'You' : quoted.authorId}{' '}
+              {quotedName ?? (quoted.authorId === 'user' ? 'You' : quoted.authorId)}{' '}
               <span className="meta">{timeAgo(quoted.createdAt)}</span>
             </div>
             <div style={{ marginTop: 2 }}>{quoted.body.length > 140 ? `${quoted.body.slice(0, 137)}…` : quoted.body}</div>

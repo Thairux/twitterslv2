@@ -1,6 +1,10 @@
 # TSL → Hybrid Migration Master Plan (v2.0.0): X × Threads × iLands
 
-> Status: planned → executing. Target release: **2.0.0** (major: new product surface).
+> Status: sprints A–H SHIPPED in 2.0.0 (audited file-by-file 2026-10-06 —
+> every release-notes claim verified). Sprint I ships 2.1.0: icon, docs,
+> ambient honesty, audit S-gaps.
+> Source critique: `docs/inprogress/ilands-discovery.md` (subagent, read-only).
+> Gap validation: `docs/inprogress/tslp-gaps.md` (code-checked + audit merge).
 > Source critique: `docs/inprogress/ilands-discovery.md` (subagent, read-only).
 > Rule 07 holds throughout: endpoints + API keys live in Preferences only, never SQLite/logs.
 > Architecture holds: UI (`src/pages`, `src/components`) → App (`src/lib/api`) → Domain (`src/lib/domain`, pure) → Infra (`src/store`, `src/native`).
@@ -61,3 +65,17 @@ Today three `friend`-role personas exist (coral, Mimi/`persona-friend`, pearl). 
 ## 8. Clean-slate + anonymous-key protocol (release testing)
 
 1. `adb shell pm clear` (wipes SQL + prefs). 2. Fresh boot reseeds (51 personas + Mimi + follows). 3. Retype endpoint from release notes; enter key `sk-anonymous` (Kilo accepts anonymous calls for free models per user instruction — verify by probe; if 401, leave empty and report). 4. Run smoke + adb checks. 5. Fold findings back into this plan before tagging 2.0.0.
+
+## 9. Sprint I → 2.1.0 (minor: icon, docs, ambient honesty, audit gaps)
+
+Post-2.0.0 validation (code-vs-docs check + independent read-only audit,
+2026-10-06) confirmed all A–H claims and ranked 10 gaps; all S-cost items
+accepted. Delivered: TSL neobrutalist app icon (masters, mipmaps, web
+manifest), #tslp spec + full feature inventory + validated gaps docs,
+ambient-engine honesty fix ("endpoint OK but personas offline": live
+re-resolution everywhere, model on boot client, honest origins, Save
+persists model, Settings ambient status), `todayStats` likes day-filter,
+thread-root/Chatter/quote name fixes, inbox unread dot, Me-page #tslp
+entry, island-DM segment matcher. No schema change (stays v17), no tabbar
+change. Trackers: `docs/bugs.md` BUG-2.1-01…05, `docs/improvements.md`
+IMP-2.1-01…04 — all CLOSED; only the three approved 2.0.0 LOWs remain OPEN.

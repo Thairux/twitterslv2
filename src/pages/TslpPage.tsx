@@ -232,7 +232,7 @@ function PersonaDetail({
 }) {
   const [persona, setPersona] = useState<PersonaLite | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('posts');
-  const [posts, setPosts] = useState<Array<{ id: string; body: string; createdAt: string; likes: number }>>([]);
+  const [posts, setPosts] = useState<Array<{ id: string; body: string; createdAt: string }>>([]);
   const [dmsYou, setDmsYou] = useState<Array<{ id: string; senderId: string; body: string; createdAt: string }>>([]);
   const [dmsIsland, setDmsIsland] = useState<Array<{ id: string; threadId: string; senderId: string; body: string; createdAt: string }>>([]);
   const [stats, setStats] = useState<PersonaStats | null>(null);
@@ -264,15 +264,18 @@ function PersonaDetail({
           personaStats(store, personaId),
         ]);
         if (cancelled) return;
-        setPosts(postRows.map((r) => ({ id: r.id, body: r.body, createdAt: r.created_at, likes: 0 })));
+        setPosts(postRows.map((r) => ({ id: r.id, body: r.body, createdAt: r.created_at })));
         setDmsYou(
           dmRows
             .filter((d) => d.thread_id === `user:${personaId}`)
             .map((d) => ({ id: d.id, senderId: d.sender_id, body: d.body, createdAt: d.created_at })),
         );
+        // Segment match (not substring): thread ids are `agent:<a>:<b>`,
+        // and a raw includes() misattributes threads on overlapping ids.
+        const involves = (threadId: string) => threadId.split(':').includes(personaId);
         setDmsIsland(
           dmRows
-            .filter((d) => !d.thread_id.startsWith('user:') && (d.sender_id === personaId || d.thread_id.includes(personaId)))
+            .filter((d) => !d.thread_id.startsWith('user:') && (d.sender_id === personaId || involves(d.thread_id)))
             .slice(0, 30)
             .map((d) => ({ id: d.id, threadId: d.thread_id, senderId: d.sender_id, body: d.body, createdAt: d.created_at })),
         );

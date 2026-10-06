@@ -6,6 +6,7 @@ import type { FilesAdapter } from '../native/files';
 import { useApi } from '../lib/api';
 import { ProviderManager, ModelKindPicker } from '../components/ProviderSettings';
 import { ModelClient, normalizeEndpoint } from '../lib/api/model-client';
+import { getAmbientStatus, type AmbientStatus } from '../lib/api/ambient-status';
 import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
 import { exportAllData } from '../lib/api/export';
@@ -94,6 +95,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
   const [discoverStatus, setDiscoverStatus] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState('');
+  const [ambient, setAmbient] = useState<AmbientStatus>(() => getAmbientStatus());
   const [runningLocal, setRunningLocal] = useState(false);
   const autoDiscoveredFor = useRef<string | null>(null);
 
@@ -113,6 +115,8 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
     } catch (err) {
       console.error('Simulation tick failed:', err);
       setSimLog('Simulation tick failed.');
+    } finally {
+      setAmbient(getAmbientStatus());
     }
   }
 
@@ -232,6 +236,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
         model ? { model } : {},
       );
       setTestResult(`[endpoint reply] ${reply}`);
+      setAmbient(getAmbientStatus());
     } catch (e) {
       setError(`Test chat failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -297,6 +302,13 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
         setHasStoredKey(true);
       } else {
         await secrets.clearApiKey();
+      }
+      // Save Configuration used to drop the model id: the next ambient beat
+      // then sent model-less requests, gateway 400s, silent offline pools.
+      const model = modelIdInput.trim() || selectedModel;
+      if (model) {
+        await secrets.setSelectedModel(model);
+        setSelectedModel(model);
       }
       await secrets.setImageGenEndpoint(imageGenEndpoint);
       await secrets.setCaptionEndpoint(captionEndpoint);
@@ -499,6 +511,11 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
         </button>
       </div>
       {testResult && <p className="meta" data-testid="test-result" style={{ marginTop: 4, wordBreak: 'break-word' }}>{testResult}</p>}
+      <p className="meta" data-testid="ambient-status" style={{ marginTop: 4 }}>
+        Ambient engine: <b>{ambient.live ? 'LIVE via endpoint' : 'offline pools'}</b>
+        {ambient.lastError ? ` (last fallback ${ambient.lastWhere ?? ''}: ${ambient.lastError})` : ''}
+        {' '}<button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setAmbient(getAmbientStatus())}>Refresh</button>
+      </p>
 
       <div style={{ marginBottom: 12, marginTop: 12 }}>
         <label><b>Endpoint Models</b> <span className="meta">(auto-discovered{endpoint ? ` from ${endpoint}` : ''})</span>

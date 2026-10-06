@@ -133,7 +133,7 @@ export function ThreadPage() {
   return (
     <div className="content-area">
       {post && (
-        <PostCard post={post} poll={polls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
+        <PostCard post={post} poll={polls.get(post.id)} authorName={post.authorId === 'user' ? undefined : (names.get(post.authorId) ?? post.authorId)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
       )}
       <div className="thread-line" style={{ margin: '0 0 0 24px', minHeight: 24 }} />
       <div className="field-row" style={{ marginLeft: 24, marginBottom: 12 }}>

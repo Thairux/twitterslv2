@@ -1,5 +1,6 @@
 import { Store } from './api/store';
 import { ModelClient } from './api/model-client';
+import { noteAmbientFallback, noteAmbientLive } from './api/ambient-status';
 import type { Persona } from './domain/persona';
 import { makePost } from './domain/post';
 import { OFFLINE_FRIEND_REPLIES, OFFLINE_CROWD_REPLIES, OFFLINE_POST_STARTERS, REAL_PHOTO_URLS, REAL_LINK_POSTS } from './domain/engine';
@@ -30,8 +31,10 @@ export async function ambientTick(store: Store, modelClient?: ModelClient): Prom
         const prompt = `You live on a tropical island social network. Write a short in-character post as ${persona.displayName} (${persona.role}): ${persona.vibe}. Slice of island life, concrete details, under 140 chars, no hashtags.`;
         body = await modelClient.chat([{ role: 'user', content: prompt }]);
         origin = 'glimmer';
+        noteAmbientLive();
         await modelClient.recordAttempt(store as any, undefined, 'chat');
-      } catch {
+      } catch (err) {
+        noteAmbientFallback('chatter:post', err);
         body = modelClient.offlineReply(pool);
       }
     } else {
@@ -57,12 +60,18 @@ export async function personaToPersonaDms(store: Store, modelClient?: ModelClien
 
   let textA: string;
   let textB: string;
+  // Honest origin: persona-to-persona DMs used to hardcode 'offline' even
+  // when the endpoint answered, hiding live success from the UI.
+  let origin: 'glimmer' | 'offline' = 'offline';
   if (modelClient) {
     try {
       textA = await modelClient.chat([{ role: 'user', content: `DM as ${a.displayName} to ${b.displayName}: say hello briefly.` }]);
       textB = await modelClient.chat([{ role: 'user', content: `DM as ${b.displayName} replying to ${a.displayName}: respond briefly.` }]);
+      origin = 'glimmer';
+      noteAmbientLive();
       await modelClient.recordAttempt(store as any, undefined, 'dm');
-    } catch {
+    } catch (err) {
+      noteAmbientFallback('chatter:p2p-dm', err);
       textA = modelClient.offlineReply(OFFLINE_CROWD_REPLIES);
       textB = modelClient.offlineReply(OFFLINE_CROWD_REPLIES);
     }
@@ -78,7 +87,7 @@ export async function personaToPersonaDms(store: Store, modelClient?: ModelClien
     senderId: a.id,
     body: textA,
     createdAt: now,
-    origin: 'offline',
+    origin,
   });
   store.createDm({
     id: `dm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -86,6 +95,6 @@ export async function personaToPersonaDms(store: Store, modelClient?: ModelClien
     senderId: b.id,
     body: textB,
     createdAt: now,
-    origin: 'offline',
+    origin,
   });
 }

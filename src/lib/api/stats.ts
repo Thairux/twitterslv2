@@ -75,7 +75,7 @@ export async function todayStats(store: Store, day?: string): Promise<DayStats> 
   const [posts, replies, reactions, dms] = await Promise.all([
     store.query<{ created_at: string }>('SELECT created_at FROM posts'),
     store.query<{ created_at: string }>('SELECT created_at FROM replies'),
-    store.query<{ kind: string }>('SELECT kind FROM reactions'),
+    store.query<{ kind: string; created_at: string }>('SELECT kind, created_at FROM reactions'),
     store.query<{ thread_id: string; sender_id: string; created_at: string }>(
       'SELECT thread_id, sender_id, created_at FROM dms',
     ),
@@ -96,7 +96,7 @@ export async function todayStats(store: Store, day?: string): Promise<DayStats> 
     day: target,
     posts: posts.filter((p) => dayOf(p.created_at) === target).length,
     replies: replies.filter((r) => dayOf(r.created_at) === target).length,
-    likes: reactions.filter((r) => r.kind === 'like').length,
+    likes: reactions.filter((r) => r.kind === 'like' && dayOf(r.created_at) === target).length,
     dmsToUser,
     dmsToPersonas,
     dmsFromUser,
