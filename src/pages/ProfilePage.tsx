@@ -18,7 +18,7 @@ export function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
-  const [tab, setTab] = useState<'posts' | 'bookmarks' | 'following' | 'followers'>('posts');
+  const [tab, setTab] = useState<'posts' | 'bookmarks' | 'following' | 'followers' | 'media'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [bookmarkPosts, setBookmarkPosts] = useState<Post[]>([]);
   const [followingCount, setFollowingCount] = useState(0);
@@ -84,6 +84,15 @@ export function ProfilePage() {
       await refreshRelations();
     } catch (err) {
       console.error('Follow failed:', err);
+    }
+  }
+
+  async function handleRemoveFollower(personaId: string) {
+    try {
+      await store.removeFollower(personaId);
+      await refreshRelations();
+    } catch (err) {
+      console.error('Remove follower failed:', err);
     }
   }
 
@@ -204,7 +213,7 @@ export function ProfilePage() {
       </div>
 
       <div className="feed-tabs">
-        {(['posts', 'bookmarks', 'following', 'followers'] as const).map((t) => (
+        {(['posts', 'bookmarks', 'following', 'followers', 'media'] as const).map((t) => (
           <button
             key={t}
             className={tab === t ? 'active' : ''}
@@ -219,6 +228,17 @@ export function ProfilePage() {
       {tab === 'posts' && posts.map((post) => (
         <PostCard key={post.id} post={post} poll={postPolls.get(post.id)} onEdit={handleEdit} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={postVotes[post.id]} />
       ))}
+
+      {tab === 'media' && (
+        <div className="tab-pane active-pane" data-testid="profile-media">
+          {posts.filter((p) => p.imagePath || p.imageUrl).length === 0 && (
+            <p className="meta">No media posts yet.</p>
+          )}
+          {posts.filter((p) => p.imagePath || p.imageUrl).map((post) => (
+            <PostCard key={post.id} post={post} poll={postPolls.get(post.id)} onEdit={handleEdit} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={postVotes[post.id]} />
+          ))}
+        </div>
+      )}
 
       {tab === 'bookmarks' && bookmarkPosts.map((post) => (
         <PostCard key={post.id} post={post} poll={bookmarkPolls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={bookmarkVotes[post.id]} />
@@ -261,6 +281,7 @@ export function ProfilePage() {
               <div className="field-row" style={{ flexShrink: 0, marginTop: 0 }}>
                 <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)}>Message</button>
                 <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleFollowBack(p.id)}>Follow back</button>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => handleRemoveFollower(p.id)} data-testid={`remove-follower-${p.id}`}>Remove</button>
               </div>
             </div>
           ))}

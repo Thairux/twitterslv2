@@ -88,6 +88,21 @@ export class SocialStore {
     return this.store.isReacted(postId, personaId, 'repost');
   }
 
+  /** Block with full cleanup: block + unfollow + drop them as follower. */
+  async blockPersona(personaId: string): Promise<void> {
+    await this.store.block(personaId);
+    try {
+      await this.store.unfollow(personaId);
+    } catch {
+      // ignore
+    }
+    try {
+      await this.store.removeFollower(personaId);
+    } catch {
+      // ignore
+    }
+  }
+
   async listLikers(postId: string): Promise<Array<{ id: string; displayName: string; handle: string }>> {
     return this.store.listReactionAuthors(postId, 'like');
   }

@@ -31,6 +31,12 @@ export class SeedService {
     if (!cfg) {
       await this.store.setAgentConfig('spawn_state', JSON.stringify({ currentWeek: 0, totalSpawned: SEED_PERSONAS.length }));
     }
+    // One primary friend for the Friend tab (resolves the multi-friend
+    // identity question; friend creator overwrites on confirm).
+    const primary = await this.store.getAgentConfig('primary_friend_id');
+    if (!primary) {
+      await this.store.setAgentConfig('primary_friend_id', 'persona-friend');
+    }
 
     // The island starts alive: the user follows Mimi + 4 personas,
     // and Mimi + 6 personas follow back. INSERT OR IGNORE: safe to re-run.

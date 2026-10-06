@@ -14,6 +14,8 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { DMsPage } from './pages/DMsPage';
 import { FriendPage } from './pages/FriendPage';
 import { ModelsPage } from './pages/ModelsPage';
+import { TslpPage } from './pages/TslpPage';
+import { FriendRoute } from './pages/FriendRoute';
 import { SettingsPage } from './pages/SettingsPage';
 import { PersonaPage } from './pages/PersonaPage';
 import { SearchPage } from './pages/SearchPage';
@@ -61,7 +63,7 @@ function Shell({ data }: ShellProps) {
         </div>
         <div className="app-header-right">
           <Link to="/models" className="btn" style={{ fontSize: '10px', padding: '4px 8px' }}>Models</Link>
-          <Link to="/dms" className="btn" style={{ fontSize: '10px', padding: '4px 8px' }}>Friend</Link>
+          <Link to="/friend" className="btn" style={{ fontSize: '10px', padding: '4px 8px' }} data-testid="header-friend">Friend</Link>
           <Link to="/settings" className="btn" style={{ fontSize: '10px', padding: '4px 8px' }}>Settings</Link>
           <button onClick={toggleTheme} className="btn" style={{ fontSize: '10px', padding: '4px 8px' }}>TGL</button>
           <button onClick={() => (window as any).__tsl?.lockApp?.()} className="btn" style={{ fontSize: '10px', padding: '4px 8px' }}>Lock</button>
@@ -76,6 +78,8 @@ function Shell({ data }: ShellProps) {
           <Route path="/dms" element={<DMsPage />} />
           <Route path="/messages/:id" element={<FriendPage />} />
           <Route path="/models" element={<ModelsPage modelService={modelService} />} />
+          <Route path="/tslp" element={<TslpPage />} />
+          <Route path="/friend" element={<FriendRoute />} />
           <Route path="/settings" element={<SettingsPage store={store} secrets={secrets} modelService={modelService} client={client} nativeFiles={nativeFiles} />} />
           <Route path="/persona/:id" element={<PersonaPage />} />
           <Route path="/search" element={<SearchPage socialStore={socialStore} dmStore={dmStore} />} />
@@ -180,7 +184,7 @@ export function App() {
     <HashRouter>
       <ThemeProvider>
         <ErrorBoundary>
-          <ApiProvider store={data.store} dmStore={data.dmStore} socialStore={data.socialStore} modelService={data.modelService} nativeFiles={data.nativeFiles} client={data.client}>
+          <ApiProvider store={data.store} dmStore={data.dmStore} socialStore={data.socialStore} modelService={data.modelService} nativeFiles={data.nativeFiles} client={data.client} secrets={data.secrets}>
             <Shell data={data} />
           </ApiProvider>
         </ErrorBoundary>

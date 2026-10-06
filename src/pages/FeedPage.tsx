@@ -7,6 +7,7 @@ import { getActiveEventText } from '../lib/world-events';
 import { rotateDemoEvent } from '../lib/daily';
 import { usePolls } from '../lib/api/use-polls';
 import { usePollVotes } from '../lib/api/use-poll-votes';
+import { usePersonaNames } from '../lib/api/use-persona-names';
 
 export function FeedPage() {
   const { socialStore, store } = useApi();
@@ -15,6 +16,7 @@ export function FeedPage() {
   const [tab, setTab] = useState<'foryou' | 'following'>('foryou');
   const [eventText, setEventText] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+  const [viewCounts, setViewCounts] = useState<Record<string, number>>({});
   const lastRotatedRef = useRef<number>(0);
 
   useEffect(() => {
@@ -29,6 +31,12 @@ export function FeedPage() {
           if (!cancelled) setReplyCounts(counts);
         } catch {
           // counts are decorative; feed still renders
+        }
+        try {
+          const views = await store.getPostViewCounts();
+          if (!cancelled) setViewCounts(views);
+        } catch {
+          // ignore
         }
         const text = await getActiveEventText(store);
         if (cancelled) return;
@@ -58,6 +66,7 @@ export function FeedPage() {
 
   const polls = usePolls(store, posts.map((p) => p.id));
   const pollVotes = usePollVotes(store, posts.map((p) => p.id));
+  const names = usePersonaNames(store);
 
   return (
     <div className="content-area">
@@ -71,7 +80,7 @@ export function FeedPage() {
         <button className={tab === 'following' ? 'active' : ''} onClick={() => setTab('following')}>Following</button>
       </div>
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} poll={polls.get(post.id)} replyCount={replyCounts[post.id] ?? 0} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
+        <PostCard key={post.id} post={post} poll={polls.get(post.id)} authorName={post.authorId === 'user' ? undefined : (names.get(post.authorId) ?? post.authorId)} replyCount={replyCounts[post.id] ?? 0} views={viewCounts[post.id] ?? 0} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
       ))}
       {posts.length === 0 && (
         <p className="meta" data-testid="feed-empty">

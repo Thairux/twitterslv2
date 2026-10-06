@@ -10,6 +10,10 @@ export async function exportAllData(store: Store): Promise<Record<string, unknow
   const bookmarks = await store.query<any>('SELECT id, post_id AS postId, created_at AS createdAt FROM bookmarks ORDER BY created_at DESC');
   const personas = await store.query<any>('SELECT * FROM personas ORDER BY created_at ASC');
   const mutedWords = await store.query<any>('SELECT word, created_at AS createdAt FROM muted_words ORDER BY created_at ASC');
+  const providers = await store.query<any>('SELECT * FROM providers ORDER BY created_at ASC');
+  const favorites = await store.query<any>('SELECT * FROM favorites ORDER BY created_at ASC');
+  const drafts = await store.query<any>('SELECT * FROM drafts ORDER BY updated_at DESC');
+  const followers = await store.query<any>('SELECT * FROM followers ORDER BY created_at ASC');
 
   return {
     exportedAt: new Date().toISOString(),
@@ -20,5 +24,9 @@ export async function exportAllData(store: Store): Promise<Record<string, unknow
     bookmarks,
     personas,
     mutedWords,
+    providers,
+    favorites,
+    drafts,
+    followers,
   };
 }

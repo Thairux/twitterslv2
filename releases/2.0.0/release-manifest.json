@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "releasedAt": "2026-10-06T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "gates": {
+    "loop1Critique": "pass",
+    "loop2Validation": "pass",
+    "loop3Regression": "pass",
+    "openHighMedium": 0
+  },
+  "features": [
+    "#tslp admin panel with dashboards and friend creator",
+    "X-style nested comments, quote cards, counts, views",
+    "Full notification center with deep links",
+    "Favorites, drafts, search filters, media tab",
+    "1500 persona cap with named spawns"
+  ],
+  "artifacts": [
+    "releases/2.0.0/twitterslv2-2.0.0-release.apk"
+  ]
+}

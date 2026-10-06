@@ -412,6 +412,70 @@ export class Store {
   async removeFollower(personaId: string): Promise<void> {
     await this.db.run('DELETE FROM followers WHERE persona_id = ?', [personaId]);
   }
+
+  // Favorites (starred personas)
+  async listFavorites(): Promise<string[]> {
+    const rows = await this.query<{ persona_id: string }>('SELECT persona_id FROM favorites');
+    return rows.map((r) => r.persona_id);
+  }
+
+  async isFavorite(personaId: string): Promise<boolean> {
+    const row = await this.selectOne<{ persona_id: string }>('SELECT persona_id FROM favorites WHERE persona_id = ?', [personaId]);
+    return !!row;
+  }
+
+  async toggleFavorite(personaId: string): Promise<boolean> {
+    if (await this.isFavorite(personaId)) {
+      await this.db.run('DELETE FROM favorites WHERE persona_id = ?', [personaId]);
+      return false;
+    }
+    await this.db.run('INSERT OR IGNORE INTO favorites (persona_id, created_at) VALUES (?, ?)', [personaId, new Date().toISOString()]);
+    return true;
+  }
+
+  // Drafts (composer autosave)
+  async saveDraft(id: string, body: string, quoteId?: string): Promise<void> {
+    const now = new Date().toISOString();
+    const existing = await this.selectOne<{ id: string }>('SELECT id FROM drafts WHERE id = ?', [id]);
+    if (existing) {
+      await this.db.run('UPDATE drafts SET body = ?, quote_id = ?, updated_at = ? WHERE id = ?', [body, quoteId ?? null, now, id]);
+    } else {
+      await this.db.run('INSERT INTO drafts (id, body, quote_id, updated_at) VALUES (?, ?, ?, ?)', [id, body, quoteId ?? null, now]);
+    }
+  }
+
+  async getDraft(id: string): Promise<{ id: string; body: string; quoteId?: string } | null> {
+    const row = await this.selectOne<any>('SELECT * FROM drafts WHERE id = ?', [id]);
+    if (!row) return null;
+    return { id: row.id, body: row.body ?? '', quoteId: row.quote_id ?? undefined };
+  }
+
+  async deleteDraft(id: string): Promise<void> {
+    await this.db.run('DELETE FROM drafts WHERE id = ?', [id]);
+  }
+
+  // Post views (one row per open)
+  async recordPostView(postId: string, viewerId = 'user'): Promise<void> {
+    await this.db.run('INSERT INTO post_views (post_id, viewer_id, viewed_at) VALUES (?, ?, ?)', [postId, viewerId, new Date().toISOString()]);
+  }
+
+  async getPostViewCounts(): Promise<Record<string, number>> {
+    // No GROUP BY: web fallback counts in JS.
+    const rows = await this.query<{ post_id: string }>('SELECT post_id FROM post_views');
+    const counts: Record<string, number> = {};
+    for (const r of rows) counts[r.post_id] = (counts[r.post_id] ?? 0) + 1;
+    return counts;
+  }
+
+  // Notification read state
+  async markNotificationRead(id: string): Promise<void> {
+    await this.db.run('INSERT OR REPLACE INTO notification_reads (id, read_at) VALUES (?, ?)', [id, new Date().toISOString()]);
+  }
+
+  async listNotificationReads(): Promise<Set<string>> {
+    const rows = await this.query<{ id: string }>('SELECT id FROM notification_reads');
+    return new Set(rows.map((r) => r.id));
+  }
   async isMuted(personaId: string): Promise<boolean> {
     const row = await this.selectOne<{ persona_id: string }>('SELECT persona_id FROM mutes WHERE persona_id = ?', [personaId]);
     return !!row;

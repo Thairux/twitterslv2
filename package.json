@@ -1,7 +1,7 @@
 {
   "name": "twitterslv2",
   "private": true,
-  "version": "1.0.12",
+  "version": "2.0.0",
   "description": "TwitterSL v2 — local-first fake-Twitter island sim, Capacitor + Vite + React port of v1 (Expo).",
   "type": "module",
   "scripts": {

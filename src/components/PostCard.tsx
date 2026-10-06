@@ -16,6 +16,9 @@ export interface PostCardProps {
   onVote?: (optionId: string) => void;
   voted?: boolean;
   replyCount?: number;
+  views?: number;
+  /** Display name override — Feed/Search/Gazette pass resolved names. */
+  authorName?: string;
 }
 
 export function timeAgo(iso: string): string {
@@ -31,18 +34,19 @@ export function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCount }: PostCardProps) {
+export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCount, views, authorName }: PostCardProps) {
   const isUser = post.authorId === 'user';
-  const name = isUser ? 'You' : post.authorId;
+  const name = authorName ?? (isUser ? 'You' : post.authorId);
   const handle = isUser ? '@you' : `@${post.authorId}`;
   const timeLabel = timeAgo(post.createdAt);
   const truncated = post.body.length > 280 ? post.body.slice(0, 277) + '...' : post.body;
   const nativeFiles = useNativeFiles();
-  const { socialStore } = useApi();
+  const { socialStore, store } = useApi();
   const mediaUrl = useBlobUrl(nativeFiles, post.imagePath || undefined);
   const remoteUrl = post.imageUrl && /^https?:\/\//.test(post.imageUrl) ? post.imageUrl : undefined;
   const showMedia = mediaUrl || remoteUrl || post.imagePrompt;
   const [ogPreview, setOgPreview] = useState<{ title?: string; description?: string; image?: string; url?: string } | null>(null);
+  const [quoted, setQuoted] = useState<Post | null>(null);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [repostCount, setRepostCount] = useState(post.reposts);
   const [showLikers, setShowLikers] = useState(false);
@@ -71,9 +75,22 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
         // ignore OG fetch failures
       }
     }
+    async function loadQuoted() {
+      if (!post.quotedPostId) {
+        if (!cancelled) setQuoted(null);
+        return;
+      }
+      try {
+        const q = await store.getPost(post.quotedPostId);
+        if (!cancelled) setQuoted(q);
+      } catch {
+        // leave null; raw-id fallback below
+      }
+    }
     loadOg();
+    loadQuoted();
     return () => { cancelled = true; };
-  }, [post.body]);
+  }, [post.body, post.quotedPostId, store]);
 
   return (
     <div className="post">
@@ -163,36 +180,63 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
         </div>
       )}
       {post.quotedPostId && (
-        <div
-          style={{
-            marginTop: 8,
-            border: '2px solid var(--border)',
-            borderRadius: 4,
-            padding: 8,
-            background: 'rgba(0,0,0,0.05)',
-            fontSize: 12,
-          }}
-        >
-          Quoted post: {post.quotedPostId}
-        </div>
+        quoted ? (
+          <Link
+            to={`/post/${quoted.id}`}
+            style={{
+              marginTop: 8,
+              border: '2px solid var(--border)',
+              borderRadius: 4,
+              padding: 8,
+              background: 'rgba(0,0,0,0.05)',
+              fontSize: 12,
+              display: 'block',
+              textDecoration: 'none',
+              color: 'var(--text)',
+            }}
+            data-testid={`quote-card-${post.id}`}
+          >
+            <div style={{ fontWeight: 'bold' }}>
+              {quoted.authorId === 'user' ? 'You' : quoted.authorId}{' '}
+              <span className="meta">{timeAgo(quoted.createdAt)}</span>
+            </div>
+            <div style={{ marginTop: 2 }}>{quoted.body.length > 140 ? `${quoted.body.slice(0, 137)}…` : quoted.body}</div>
+          </Link>
+        ) : (
+          <div
+            style={{
+              marginTop: 8,
+              border: '2px solid var(--border)',
+              borderRadius: 4,
+              padding: 8,
+              background: 'rgba(0,0,0,0.05)',
+              fontSize: 12,
+            }}
+          >
+            Quoted post: {post.quotedPostId}
+          </div>
+        )
       )}
       {poll && (
         <div style={{ marginTop: 8, border: '2px solid var(--border)', borderRadius: 4, padding: 8, fontSize: 12 }}>
           <div style={{ fontWeight: 'bold', marginBottom: 6 }}>{poll.question}</div>
-          {poll.options.map((opt) => (
-            <div key={opt.id} style={{ marginBottom: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{opt.label}</span>
-                <span className="meta">{opt.votes}</span>
+          {(() => {
+            const total = poll.options.reduce((n, o) => n + o.votes, 0);
+            return poll.options.map((opt) => (
+              <div key={opt.id} style={{ marginBottom: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{opt.label}</span>
+                  <span className="meta">{opt.votes}</span>
+                </div>
+                <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden', marginTop: 2 }}>
+                  <div style={{ width: `${total > 0 ? Math.min(100, Math.round((opt.votes / total) * 100)) : 0}%`, height: '100%', background: 'var(--accent)' }} />
+                </div>
+                {onVote && (
+                  <button className="btn" style={{ fontSize: 10, padding: '2px 8px', marginTop: 2 }} onClick={() => onVote(opt.id)} disabled={voted}>{voted ? 'Voted' : 'Vote'}</button>
+                )}
               </div>
-              <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden', marginTop: 2 }}>
-                <div style={{ width: `${Math.min(100, opt.votes)}%`, height: '100%', background: 'var(--accent)' }} />
-              </div>
-              {onVote && (
-                <button className="btn" style={{ fontSize: 10, padding: '2px 8px', marginTop: 2 }} onClick={() => onVote(opt.id)} disabled={voted}>{voted ? 'Voted' : 'Vote'}</button>
-              )}
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       )}
       <div className="post-actions" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
@@ -206,6 +250,9 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
           ♥ {likeCount}
         </button>
         <span className="meta">↻ {repostCount}</span>
+        {views !== undefined && views > 0 && (
+          <span className="meta" data-testid={`views-${post.id}`}>👁 {views}</span>
+        )}
         {replyCount !== undefined && (
           <Link to={`/post/${post.id}`} className="meta" data-testid={`reply-count-${post.id}`} style={{ textDecoration: 'none' }}>
             💬 {replyCount}

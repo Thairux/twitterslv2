@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../lib/api';
 import { PostCard } from '../components/PostCard';
+import { LikeButton } from '../components/LikeButton';
 import type { Post, Reply } from '../lib/domain/post';
 import { usePolls } from '../lib/api/use-polls';
 import { usePollVotes } from '../lib/api/use-poll-votes';
@@ -16,6 +17,8 @@ export function ThreadPage() {
   const [replyBody, setReplyBody] = useState('');
   const [replying, setReplying] = useState(false);
   const [replyParent, setReplyParent] = useState<{ id: string; name: string } | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [newestFirst, setNewestFirst] = useState(false);
 
   async function reloadThread() {
     if (!id) return;
@@ -23,6 +26,11 @@ export function ThreadPage() {
       const thread = await socialStore.getThread(id);
       setPost(thread.post);
       setReplies(thread.replies);
+      try {
+        await store.recordPostView(id);
+      } catch {
+        // views are best-effort
+      }
     } catch (err) {
       console.error('Failed to load thread:', err);
     }
@@ -40,6 +48,11 @@ export function ThreadPage() {
           setNames(new Map(personas.map((p) => [p.id, p.displayName])));
         } catch {
           // names stay empty; author ids render as fallback
+        }
+        try {
+          await store.recordPostView(id);
+        } catch {
+          // views are best-effort
         }
       } catch (err) {
         console.error('Failed to load thread:', err);
@@ -98,8 +111,19 @@ export function ThreadPage() {
     return cur;
   }
   const topLevel = replies.filter((r) => topAncestor(r).id === r.id);
+  const orderedTop = [...topLevel].sort((a, b) =>
+    newestFirst ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt),
+  );
   function childrenOf(parentId: string): Reply[] {
     return replies.filter((r) => r.id !== parentId && topAncestor(r).id === parentId);
+  }
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   if (!post && !replies.length) {
@@ -131,8 +155,16 @@ export function ThreadPage() {
           </button>
         )}
       </div>
-      {topLevel.map((r) => {
+      {topLevel.length > 1 && (
+        <div className="field-row" style={{ marginLeft: 24, marginBottom: 8 }}>
+          <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setNewestFirst((v) => !v)} data-testid="thread-sort">
+            {newestFirst ? 'Newest first' : 'Oldest first'}
+          </button>
+        </div>
+      )}
+      {orderedTop.map((r) => {
         const kids = childrenOf(r.id);
+        const isCollapsed = collapsed.has(r.id);
         return (
           <div key={r.id}>
             <div className="post" style={{ marginLeft: 24 }} data-testid={`reply-${r.id}`}>
@@ -141,7 +173,7 @@ export function ThreadPage() {
                 <span className="time">{new Date(r.createdAt).toLocaleString()}</span>
               </div>
               <div className="post-body">{r.body}</div>
-              <div className="post-actions">
+              <div className="post-actions" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   className="btn"
                   style={{ fontSize: 10, padding: '2px 8px' }}
@@ -150,18 +182,43 @@ export function ThreadPage() {
                 >
                   Reply
                 </button>
+                <LikeButton postId={r.id} />
+                {kids.length > 0 && (
+                  <button
+                    className="btn"
+                    style={{ fontSize: 10, padding: '2px 8px' }}
+                    onClick={() => toggleCollapse(r.id)}
+                    data-testid={`collapse-${r.id}`}
+                  >
+                    {isCollapsed ? `＋ ${kids.length}` : `－ ${kids.length}`}
+                  </button>
+                )}
               </div>
             </div>
-            {kids.map((k) => (
-              <div key={k.id} className="post" style={{ marginLeft: 48, borderStyle: 'dashed' }} data-testid={`reply-${k.id}`}>
-                <div className="post-header">
-                  <span style={{ fontWeight: 'bold' }}>{names.get(k.authorId) ?? k.authorId}</span>
-                  <span className="meta">→ {names.get(r.authorId) ?? r.authorId}</span>
-                  <span className="time">{new Date(k.createdAt).toLocaleString()}</span>
+            {!isCollapsed && kids.map((k) => {
+              const directParent = (k.parentReplyId && byId.get(k.parentReplyId)) || r;
+              return (
+                <div key={k.id} className="post" style={{ marginLeft: 48, borderStyle: 'dashed' }} data-testid={`reply-${k.id}`}>
+                  <div className="post-header">
+                    <span style={{ fontWeight: 'bold' }}>{names.get(k.authorId) ?? k.authorId}</span>
+                    <span className="meta">→ {names.get(directParent.authorId) ?? directParent.authorId}</span>
+                    <span className="time">{new Date(k.createdAt).toLocaleString()}</span>
+                  </div>
+                  <div className="post-body">{k.body}</div>
+                  <div className="post-actions" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button
+                      className="btn"
+                      style={{ fontSize: 10, padding: '2px 8px' }}
+                      onClick={() => setReplyParent({ id: k.id, name: names.get(k.authorId) ?? k.authorId })}
+                      data-testid={`reply-to-${k.id}`}
+                    >
+                      Reply
+                    </button>
+                    <LikeButton postId={k.id} />
+                  </div>
                 </div>
-                <div className="post-body">{k.body}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })}

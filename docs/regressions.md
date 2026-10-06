@@ -103,3 +103,9 @@ Loop 3 regression findings for Sprint 7 SQMG gate.
 - Loop 3 regression: reviewed `docs/regressions.md`; all reviewed cases match expected post-fix state; no new OPEN regressions.
 - Release artifact present: `releases/1.0.0/` contains `release-manifest.json`, `release-notes.md`, and `quality-summary.json`.
 - Next step: if desired, proceed to formal release-candidate promotion or Sprint 8 planning.
+
+## 2.0.0 regression gate (2026-10-06)
+
+- Status: CLOSED (suite green: 124 unit + 7 e2e incl. new tslp/social specs)
+- Intentional behavior changes (spec updated first): WORLD_CAP 50?1500 (domain tests updated), persona post copy enriched (offline pools replaced), notifications now include likes/reposts/follows/quotes (was DMs+replies only), tab bar gained Search (was 4 tabs).
+- No silent ignores; deferred items live in release notes as approved LOWs.

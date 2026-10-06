@@ -2,6 +2,7 @@
 // React only — data flows through src/lib/api/ use-cases.
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { DmStore } from '../lib/api/dm-store';
 import { useApi } from '../lib/api';
 
@@ -11,7 +12,8 @@ interface NotificationsPageProps {
 
 export function NotificationsPage({ dmStore }: NotificationsPageProps) {
   const { store } = useApi();
-  const [items, setItems] = useState<Array<{ id: string; text: string; unread: boolean }>>([]);
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Array<{ id: string; text: string; unread: boolean; to?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [chatOn, setChatOn] = useState(true);
   const [mentionsOn, setMentionsOn] = useState(true);
@@ -21,31 +23,82 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
   useEffect(() => {
     async function load() {
       try {
-        const threads = await dmStore.listInbox('user');
-        const items: Array<{ id: string; text: string; unread: boolean }> = [];
-        // Replies to your posts show up as alerts too (X-style).
+        const read = await store.listNotificationReads().catch(() => new Set<string>());
+        const seen = (id: string) => read.has(id);
+        const items: Array<{ id: string; text: string; unread: boolean; to?: string }> = [];
+        const names = new Map((await store.listPersonas().catch(() => [])).map((p) => [p.id, p.displayName] as const));
+        const nameOf = (id: string) => (id === 'user' ? 'You' : (names.get(id) ?? id));
+        // Replies to your posts.
         try {
           const mine = new Set((await store.listPosts('user')).map((p) => p.id));
-          const names = new Map((await store.listPersonas()).map((p) => [p.id, p.displayName] as const));
           const replies = (await store.listReplies())
             .filter((r) => mine.has(r.postId) && r.authorId !== 'user')
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
             .slice(0, 10);
           for (const r of replies) {
-            items.push({
-              id: `reply-${r.id}`,
-              text: `${names.get(r.authorId) ?? r.authorId} replied: ${r.body}`,
-              unread: true,
-            });
+            const id = `reply-${r.id}`;
+            items.push({ id, text: `${nameOf(r.authorId)} replied: ${r.body}`, unread: !seen(id), to: `/post/${r.postId}` });
           }
         } catch {
-          // replies are best-effort; DMs below still show
+          // ignore
         }
+        // Likes and reposts on your posts.
+        try {
+          const mine = new Set((await store.listPosts('user')).map((p) => p.id));
+          const reactions = await store.query<{ post_id: string; persona_id: string; kind: string }>(
+            'SELECT post_id, persona_id, kind FROM reactions ORDER BY rowid DESC LIMIT 60',
+          );
+          const shown = new Set<string>();
+          for (const r of reactions) {
+            if (!mine.has(r.post_id) || r.persona_id === 'user') continue;
+            const key = `${r.kind}-${r.post_id}-${r.persona_id}`;
+            if (shown.has(key)) continue;
+            shown.add(key);
+            const id = `reaction-${key}`;
+            items.push({
+              id,
+              text: r.kind === 'like' ? `${nameOf(r.persona_id)} liked your post` : `${nameOf(r.persona_id)} reposted your post`,
+              unread: !seen(id),
+              to: `/post/${r.post_id}`,
+            });
+            if (items.length >= 30) break;
+          }
+        } catch {
+          // ignore
+        }
+        // New followers.
+        try {
+          const followers = await store.listFollowers();
+          for (const fid of followers.slice(-5)) {
+            const id = `follow-${fid}`;
+            items.push({ id, text: `${nameOf(fid)} followed you`, unread: !seen(id), to: `/persona/${fid}` });
+          }
+        } catch {
+          // ignore
+        }
+        // Quotes of your posts.
+        try {
+          const mine = new Set((await store.listPosts('user')).map((p) => p.id));
+          const all = await store.query<{ id: string; author_id: string; quoted_post_id: string }>(
+            'SELECT id, author_id, quoted_post_id FROM posts WHERE quoted_post_id IS NOT NULL ORDER BY rowid DESC LIMIT 20',
+          );
+          for (const p of all) {
+            if (!mine.has(p.quoted_post_id) || p.author_id === 'user') continue;
+            const id = `quote-${p.id}`;
+            items.push({ id, text: `${nameOf(p.author_id)} quoted your post`, unread: !seen(id), to: `/post/${p.id}` });
+          }
+        } catch {
+          // ignore
+        }
+        // DM threads.
+        const threads = await dmStore.listInbox('user');
         for (const t of threads.slice(0, 10)) {
+          const id = `dm-${t.threadId}`;
           items.push({
-            id: t.threadId,
-            text: t.lastDm?.body ?? '',
-            unread: t.unread,
+            id,
+            text: `${t.otherPersona.displayName}: ${t.lastDm?.body ?? ''}`,
+            unread: t.unread && !seen(id),
+            to: `/messages/${encodeURIComponent(t.otherPersona.id)}`,
           });
         }
         setItems(items);
@@ -57,6 +110,16 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
     }
     load();
   }, [dmStore, store]);
+
+  async function openItem(item: { id: string; to?: string }) {
+    try {
+      await store.markNotificationRead(item.id);
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, unread: false } : i)));
+    } catch {
+      // ignore
+    }
+    if (item.to) navigate(item.to);
+  }
 
   useEffect(() => {
     async function hydrate() {
@@ -76,53 +139,13 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
     hydrate();
   }, [store]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!cancelled) await store.setAgentConfig('notifications_chat', chatOn ? '1' : '0');
-      } catch (err) {
-        if (!cancelled) console.error('Failed to save chat setting:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [store, chatOn]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!cancelled) await store.setAgentConfig('notifications_mentions', mentionsOn ? '1' : '0');
-      } catch (err) {
-        if (!cancelled) console.error('Failed to save mentions setting:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [store, mentionsOn]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!cancelled) await store.setAgentConfig('quiet_start', quietStart);
-      } catch (err) {
-        if (!cancelled) console.error('Failed to save quiet start:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [store, quietStart]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!cancelled) await store.setAgentConfig('quiet_end', quietEnd);
-      } catch (err) {
-        if (!cancelled) console.error('Failed to save quiet end:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [store, quietEnd]);
+  async function persist(key: string, value: string) {
+    try {
+      await store.setAgentConfig(key, value);
+    } catch (err) {
+      console.error('Failed to save notification setting:', err);
+    }
+  }
 
   const unreadCount = items.filter((i) => i.unread).length;
 
@@ -135,7 +158,16 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
       )}
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {items.map((item) => (
-          <li key={item.id} className="notification-item" style={item.unread ? { borderLeft: '4px solid var(--accent)', background: 'rgba(0,0,0,0.05)' } : undefined}>
+          <li
+            key={item.id}
+            className="notification-item"
+            style={{
+              ...(item.unread ? { borderLeft: '4px solid var(--accent)', background: 'rgba(0,0,0,0.05)' } : {}),
+              ...(item.to ? { cursor: 'pointer' } : {}),
+            }}
+            onClick={() => openItem(item)}
+            data-testid={`notif-${item.id}`}
+          >
             {item.unread && <b>New: </b>}
             {item.text}
           </li>
@@ -143,12 +175,12 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
       </ul>
       <br/>
       <label className="check-label">
-        <input type="checkbox" checked={chatOn} onChange={(e) => setChatOn(e.target.checked)} />
+        <input type="checkbox" checked={chatOn} onChange={(e) => { setChatOn(e.target.checked); persist('notifications_chat', e.target.checked ? '1' : '0'); }} />
         Chat notifications
       </label>
       <br/>
       <label className="check-label">
-        <input type="checkbox" checked={mentionsOn} onChange={(e) => setMentionsOn(e.target.checked)} />
+        <input type="checkbox" checked={mentionsOn} onChange={(e) => { setMentionsOn(e.target.checked); persist('notifications_mentions', e.target.checked ? '1' : '0'); }} />
         Mention notifications
       </label>
       <br/><br/>
@@ -158,7 +190,7 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
           <input
             type="time"
             value={quietStart}
-            onChange={(e) => setQuietStart(e.target.value)}
+            onChange={(e) => { setQuietStart(e.target.value); persist('quiet_start', e.target.value); }}
             className="input-field"
             style={{ marginTop: 4 }}
           />
@@ -169,7 +201,7 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
           <input
             type="time"
             value={quietEnd}
-            onChange={(e) => setQuietEnd(e.target.value)}
+            onChange={(e) => { setQuietEnd(e.target.value); persist('quiet_end', e.target.value); }}
             className="input-field"
             style={{ marginTop: 4 }}
           />

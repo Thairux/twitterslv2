@@ -23,6 +23,7 @@ export function ComposePage() {
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
   const previewUrl = useBlobUrl(nativeFiles, imagePath || undefined);
   const [aiPrompt, setAiPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -41,12 +42,39 @@ export function ComposePage() {
             setBody(post.body);
           }
         }
+        if (!quoteId && !editId) {
+          const draft = await store.getDraft('compose-main');
+          if (draft?.body) {
+            setBody(draft.body);
+            setDraftRestored(true);
+          }
+        }
       } catch (err) {
         console.error('Failed to load compose data:', err);
       }
     }
     load();
   }, [store, quoteId, editId]);
+
+  // Autosave draft (new posts only) — survives killed composer.
+  useEffect(() => {
+    if (quoteId || editId) return;
+    if (!body.trim()) return;
+    const timer = setTimeout(() => {
+      store.saveDraft('compose-main', body).catch(() => {});
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [store, body, quoteId, editId]);
+
+  async function discardDraft() {
+    try {
+      await store.deleteDraft('compose-main');
+    } catch {
+      // ignore
+    }
+    setBody('');
+    setDraftRestored(false);
+  }
 
   const updateOption = (idx: number, value: string) => {
     setPollOptions((prev) => prev.map((o, i) => (i === idx ? value : o)));
@@ -126,6 +154,11 @@ export function ComposePage() {
 
       // Friend-first replies + likes land within seconds (persisted, staggered).
       respondToPost(socialStore, store, client, id, trimmed);
+      try {
+        await store.deleteDraft('compose-main');
+      } catch {
+        // ignore
+      }
 
       if (quoteId) {
         navigate(`/post/${quoteId}`);
@@ -214,7 +247,13 @@ export function ComposePage() {
           {saving ? 'Saving…' : (editPost ? 'Update' : 'Post')}
         </button>
         <button className="btn" onClick={() => navigate(-1)}>Cancel</button>
+        {!quoteId && !editId && (body.trim() || draftRestored) && (
+          <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={discardDraft} data-testid="draft-discard">
+            Discard draft
+          </button>
+        )}
       </div>
+      {draftRestored && <p className="meta" data-testid="draft-restored">Draft restored.</p>}
       <p className="meta">{body.length}/{MAX_POST_LEN}</p>
     </div>
   );

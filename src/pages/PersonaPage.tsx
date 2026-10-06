@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApi } from '../lib/api';
-
-interface PersonaPost {
-  id: string;
-  body: string;
-  createdAt: string;
-}
+import { PostCard } from '../components/PostCard';
+import type { Post } from '../lib/domain/post';
 
 export function PersonaPage() {
   const { id } = useParams<{ id: string }>();
-  const { store } = useApi();
+  const { store, socialStore } = useApi();
   const [persona, setPersona] = useState<{
     id: string;
     handle: string;
@@ -23,7 +19,9 @@ export function PersonaPage() {
   const [blocked, setBlocked] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
-  const [posts, setPosts] = useState<PersonaPost[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
+  const [favorite, setFavorite] = useState(false);
 
   const personaId = id ? decodeURIComponent(id) : null;
 
@@ -43,7 +41,7 @@ export function PersonaPage() {
       setMuted(await store.isMuted(p.id));
       setBlocked(await store.isBlocked(p.id));
       const raw = await store.listPosts(p.id);
-      setPosts(raw.map((r) => ({ id: r.id, body: r.body, createdAt: r.createdAt })));
+      setPosts(raw);
     }
     load();
   }, [store, personaId]);
@@ -57,40 +55,88 @@ export function PersonaPage() {
   }
 
   const handleFollow = async () => {
-    if (following) {
-      store.unfollow(persona.id);
-      setFollowing(false);
-    } else {
-      store.follow(persona.id);
-      setFollowing(true);
+    try {
+      if (following) {
+        await store.unfollow(persona.id);
+        setFollowing(false);
+      } else {
+        await store.follow(persona.id);
+        setFollowing(true);
+      }
+    } catch (err) {
+      console.error('Follow failed:', err);
     }
   };
 
   const handleMute = async () => {
-    if (muted) {
-      store.unmute(persona.id);
-      setMuted(false);
-    } else {
-      store.mute(persona.id);
-      setMuted(true);
+    try {
+      if (muted) {
+        await store.unmute(persona.id);
+        setMuted(false);
+      } else {
+        await store.mute(persona.id);
+        setMuted(true);
+      }
+    } catch (err) {
+      console.error('Mute failed:', err);
     }
   };
+
+  useEffect(() => {
+    async function loadFavorite() {
+      try {
+        const pid = persona?.id;
+        if (pid) setFavorite(await store.isFavorite(pid));
+      } catch {
+        // ignore
+      }
+    }
+    if (personaId) loadFavorite();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, personaId]);
+
+  async function toggleFavorite() {
+    const pid = persona?.id;
+    if (!pid) return;
+    try {
+      setFavorite(await store.toggleFavorite(pid));
+    } catch (err) {
+      console.error('Favorite failed:', err);
+    }
+  }
 
   const handleBlock = async () => {
-    if (blocked) {
-      store.unblock(persona.id);
-      setBlocked(false);
-    } else {
-      store.block(persona.id);
-      setBlocked(true);
+    const pid = persona?.id;
+    if (!pid) return;
+    if (!blocked && !confirmingBlock) {
+      setConfirmingBlock(true);
+      return;
+    }
+    try {
+      if (blocked) {
+        await store.unblock(pid);
+        setBlocked(false);
+      } else {
+        await socialStore.blockPersona(pid);
+        setBlocked(true);
+        setFollowing(false);
+      }
+    } catch (err) {
+      console.error('Block failed:', err);
+    } finally {
+      setConfirmingBlock(false);
     }
   };
 
-  const handleReport = () => {
+  const handleReport = async () => {
     if (!reportReason.trim()) return;
-    store.report('persona', persona.id, reportReason.trim());
-    setReportSent(true);
-    setReportReason('');
+    try {
+      await store.report('persona', persona.id, reportReason.trim());
+      setReportSent(true);
+      setReportReason('');
+    } catch (err) {
+      console.error('Report failed:', err);
+    }
   };
 
   return (
@@ -108,12 +154,25 @@ export function PersonaPage() {
 
       <div className="field-row" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
         <button className="btn" onClick={handleFollow}>{following ? 'Unfollow' : 'Follow'}</button>
+        <button
+          className="btn"
+          onClick={toggleFavorite}
+          data-testid={`persona-fav-${persona.id}`}
+          style={favorite ? { background: 'var(--accent)', color: 'var(--bg)' } : undefined}
+        >
+          {favorite ? '★ Faved' : '☆ Fav'}
+        </button>
         <button className="btn" onClick={handleMute}>{muted ? 'Unmute' : 'Mute'}</button>
-        <button className="btn" onClick={handleBlock}>{blocked ? 'Unblock' : 'Block'}</button>
+        <button className="btn" onClick={handleBlock}>
+          {blocked ? 'Unblock' : confirmingBlock ? 'Sure?' : 'Block'}
+        </button>
         <Link to={`/messages/${encodeURIComponent(persona.id)}`} className="btn" style={{ fontSize: '12px' }}>
           Message
         </Link>
       </div>
+      {confirmingBlock && !blocked && (
+        <p className="meta" style={{ marginBottom: 8 }}>Blocking also unfollows and removes them as a follower. Tap Block again to confirm.</p>
+      )}
 
       {!reportSent ? (
         <div style={{ marginBottom: 16 }}>
@@ -133,9 +192,7 @@ export function PersonaPage() {
 
       <h3 style={{ marginBottom: 12 }}>Posts</h3>
       {posts.map((post) => (
-        <div key={post.id} className="thread" style={{ marginBottom: 24 }}>
-          <div className="text">{post.body}</div>
-        </div>
+        <PostCard key={post.id} post={post} authorName={persona.displayName} />
       ))}
       {posts.length === 0 && (
         <p className="meta">No posts yet.</p>

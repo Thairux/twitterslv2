@@ -5,6 +5,7 @@ import type { SocialStore } from './social-store';
 import type { ModelService } from './models';
 import type { FilesAdapter } from '../../native/files';
 import type { ModelClient } from './model-client';
+import type { Secrets } from './secrets';
 
 export interface ApiContextValue {
   store: Store;
@@ -13,13 +14,14 @@ export interface ApiContextValue {
   modelService: ModelService;
   nativeFiles: FilesAdapter;
   client: ModelClient;
+  secrets: Secrets;
 }
 
 const ApiContext = createContext<ApiContextValue | null>(null);
 
-export function ApiProvider({ store, dmStore, socialStore, modelService, nativeFiles, client, children }: { store: Store; dmStore: DmStore; socialStore: SocialStore; modelService: ModelService; nativeFiles: FilesAdapter; client: ModelClient; children: ReactNode }) {
+export function ApiProvider({ store, dmStore, socialStore, modelService, nativeFiles, client, secrets, children }: { store: Store; dmStore: DmStore; socialStore: SocialStore; modelService: ModelService; nativeFiles: FilesAdapter; client: ModelClient; secrets: Secrets; children: ReactNode }) {
   return (
-    <ApiContext.Provider value={{ store, dmStore, socialStore, modelService, nativeFiles, client }}>
+    <ApiContext.Provider value={{ store, dmStore, socialStore, modelService, nativeFiles, client, secrets }}>
       {children}
     </ApiContext.Provider>
   );

@@ -449,6 +449,9 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       <p className="meta">
         Manage your local models in the <Link to="/models" className="btn" style={{ padding: '2px 8px', fontSize: 12 }}>Models Tab</Link>.
       </p>
+      <p className="meta" style={{ marginTop: 4 }}>
+        Open the <Link to="/tslp" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} data-testid="settings-tslp-link">#tslp admin</Link> for personas, dashboards, and friend creator.
+      </p>
 
       <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Model Selector</h3>

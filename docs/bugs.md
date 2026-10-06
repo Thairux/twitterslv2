@@ -258,3 +258,16 @@ Use this template for Loop 2 validation findings.
   Browser regression check shows controls rendered as `Quiet start` and
   `Quiet end` inputs.
 - Closed: 2026-10-01
+
+## 2.0.0 field + validation bugs (all fixed, verified by e2e/adb)
+
+| ID | Status | Severity | Area | Symptom | Fix |
+|---|---|---|---|---|---|
+| BUG-2.0-01 | CLOSED | HIGH | DMs | Threads missing from inbox | Alias projection + never-drop fallback + live refresh |
+| BUG-2.0-02 | CLOSED | HIGH | Threads | No comment composer | Inline Reply box + nested replies |
+| BUG-2.0-03 | CLOSED | HIGH | Downloads | "Parent folder doesn'"'"'t exist" | `recursive: true` on append path |
+| BUG-2.0-04 | CLOSED | HIGH | Secrets | API key read back empty | Preferences fallback on read + delete paths |
+| BUG-2.0-05 | CLOSED | MEDIUM | Personas | Generic "nonsense" posts | Rich pools + starters + verified media/links + live endpoint |
+| BUG-2.0-06 | CLOSED | MEDIUM | FAB | Half off-screen on phones | `max(16px, …)` clamp |
+| BUG-2.0-07 | CLOSED | MEDIUM | Kilo preset | Wrong model id (missing prefix) | `stepfun/step-3.7-flash:free` |
+| BUG-2.0-08 | CLOSED | MEDIUM | Profile | Followers hardcoded 0 | Real Followers/Following tabs with actions |

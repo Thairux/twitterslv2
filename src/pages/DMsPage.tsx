@@ -7,9 +7,11 @@ import { useApi } from '../lib/api';
 import type { ThreadInboxItem } from '../lib/api/dm-store';
 
 export function DMsPage() {
-  const { dmStore } = useApi();
+  const { dmStore, store } = useApi();
   const navigate = useNavigate();
   const [threads, setThreads] = useState<ThreadInboxItem[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,6 +20,11 @@ export function DMsPage() {
       try {
         const items = await dmStore.listInbox('user');
         if (!cancelled) setThreads(items);
+        try {
+          if (!cancelled) setFavorites(new Set(await store.listFavorites()));
+        } catch {
+          // ignore
+        }
       } catch (e) {
         console.error('Failed to load inbox:', e);
       } finally {
@@ -31,7 +38,10 @@ export function DMsPage() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [dmStore]);
+  }, [dmStore, store]);
+
+  const visible = threads.filter((t) => !favoritesOnly || favorites.has(t.otherPersona.id));
+  const favThreads = threads.filter((t) => favorites.has(t.otherPersona.id));
 
   return (
     <div className="content-area">
@@ -43,7 +53,22 @@ export function DMsPage() {
       {!loading && threads.length === 0 && (
         <p className="meta">No messages yet.</p>
       )}
-      {threads.map((t) => (
+      {!loading && threads.length > 0 && (
+        <div className="field-row" style={{ marginBottom: 8 }}>
+          <button
+            className="btn"
+            style={{ fontSize: 11, padding: '4px 8px', ...(favoritesOnly ? { background: 'var(--accent)', color: 'var(--bg)' } : {}) }}
+            onClick={() => setFavoritesOnly((v) => !v)}
+            data-testid="inbox-favorites-filter"
+          >
+            ★ Favorites{favoritesOnly ? ` (${favThreads.length})` : ''}
+          </button>
+        </div>
+      )}
+      {favThreads.length > 0 && !favoritesOnly && (
+        <p className="meta" style={{ marginBottom: 4 }}>★ {favThreads.length} favorite thread{favThreads.length === 1 ? '' : 's'} below</p>
+      )}
+      {visible.map((t) => (
         <div
           key={t.threadId}
           className="thread"
@@ -56,7 +81,7 @@ export function DMsPage() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {t.otherPersona.displayName}
+                {favorites.has(t.otherPersona.id) && <span style={{ color: 'var(--accent)' }}>★ </span>}{t.otherPersona.displayName}
               </div>
               <div className="meta" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {t.lastDm.senderId === 'user' ? 'You: ' : ''}{t.lastDm.body}

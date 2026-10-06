@@ -6,6 +6,7 @@ import type { Post } from '../lib/domain/post';
 import { extractTags } from '../lib/domain/social';
 import { PostCard } from '../components/PostCard';
 import { useApi } from '../lib/api';
+import { usePersonaNames } from '../lib/api/use-persona-names';
 import { usePolls } from '../lib/api/use-polls';
 import { usePollVotes } from '../lib/api/use-poll-votes';
 
@@ -31,12 +32,20 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
   const [searchTrigger, setSearchTrigger] = useState(0);
   const [suggested, setSuggested] = useState<Array<{ id: string; handle: string; displayName: string; bio?: string }>>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [mediaOnly, setMediaOnly] = useState(false);
+  const [fromUser, setFromUser] = useState('');
+  const [lastDay, setLastDay] = useState(false);
+  const names = usePersonaNames(store);
 
   async function refreshFollowing() {
     try {
       setFollowing(new Set(await store.listFollowing()));
+      setFavorites(new Set(await store.listFavorites()));
     } catch {
       setFollowing(new Set());
+      setFavorites(new Set());
     }
   }
 
@@ -59,6 +68,15 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store]);
+
+  async function toggleFavorite(personaId: string) {
+    try {
+      await store.toggleFavorite(personaId);
+      await refreshFollowing();
+    } catch (err) {
+      console.error('Favorite failed:', err);
+    }
+  }
 
   async function toggleFollow(personaId: string) {
     try {
@@ -124,6 +142,19 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
   const polls = usePolls(store, posts.map((p) => p.id));
   const pollVotes = usePollVotes(store, posts.map((p) => p.id));
 
+  const filteredPosts = posts.filter((p) => {
+    if (mediaOnly && !p.imagePath && !p.imageUrl) return false;
+    if (fromUser.trim()) {
+      const needle = fromUser.trim().toLowerCase().replace(/^@/, '');
+      if (p.authorId.toLowerCase() !== needle && (names.get(p.authorId) ?? '').toLowerCase() !== needle) return false;
+    }
+    if (lastDay && Date.now() - new Date(p.createdAt).getTime() > 24 * 60 * 60 * 1000) return false;
+    return true;
+  });
+
+  const visiblePersonas = personas.filter((p) => !favoritesOnly || favorites.has(p.id));
+  const visibleSuggested = suggested.filter((p) => !favoritesOnly || favorites.has(p.id));
+
   return (
     <div className="content-area">
       <h2 className="page-title">Search</h2>
@@ -148,43 +179,82 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
 
       {tab === 'posts' && (
         <div className="tab-pane active-pane">
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} poll={polls.get(p.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[p.id]} />
+          <div className="field-row" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+            <label className="check-label" style={{ fontSize: 11 }}>
+              <input type="checkbox" checked={mediaOnly} onChange={(e) => { setMediaOnly(e.target.checked); setSearchTrigger((n) => n + 1); }} />
+              Media only
+            </label>
+            <label className="check-label" style={{ fontSize: 11 }}>
+              <input type="checkbox" checked={lastDay} onChange={(e) => { setLastDay(e.target.checked); setSearchTrigger((n) => n + 1); }} />
+              Last 24h
+            </label>
+            <input
+              type="text"
+              value={fromUser}
+              onChange={(e) => setFromUser(e.target.value)}
+              placeholder="From: handle…"
+              className="input-field"
+              style={{ flex: '1 1 120px' }}
+              data-testid="search-from"
+            />
+          </div>
+          {filteredPosts.map((p) => (
+            <PostCard key={p.id} post={p} poll={polls.get(p.id)} authorName={p.authorId === 'user' ? undefined : (names.get(p.authorId) ?? p.authorId)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[p.id]} />
           ))}
-          {posts.length === 0 && query && <p className="meta">No posts found.</p>}
+          {filteredPosts.length === 0 && query && <p className="meta">No posts found.</p>}
         </div>
       )}
 
       {tab === 'personas' && (
         <div className="tab-pane active-pane">
-          {!query.trim() && suggested.length > 0 && (
+          <div className="field-row" style={{ marginBottom: 8 }}>
+            <button
+              className="btn"
+              style={{ fontSize: 11, padding: '4px 8px', ...(favoritesOnly ? { background: 'var(--accent)', color: 'var(--bg)' } : {}) }}
+              onClick={() => setFavoritesOnly((v) => !v)}
+              data-testid="favorites-filter"
+            >
+              ★ Favorites{favoritesOnly ? ` (${favorites.size})` : ''}
+            </button>
+          </div>
+          {!query.trim() && visibleSuggested.length > 0 && (
             <div style={{ marginBottom: 12 }}>
               <p className="meta" style={{ marginBottom: 4 }}>Who to follow</p>
-              {suggested.map((p) => (
+              {visibleSuggested.map((p) => (
                 <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                   <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)} data-testid={`dm-open-${p.id}`}>
                     <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
                     <div className="meta">@{p.handle}{p.bio ? ` — ${p.bio}` : ''}</div>
                   </div>
-                  <button className="btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }} onClick={() => toggleFollow(p.id)} data-testid={`follow-btn-${p.id}`}>
-                    {following.has(p.id) ? 'Following' : 'Follow'}
-                  </button>
+                  <div className="field-row" style={{ flexShrink: 0, marginTop: 0 }}>
+                    <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => toggleFavorite(p.id)} data-testid={`fav-btn-${p.id}`}>
+                      {favorites.has(p.id) ? '★' : '☆'}
+                    </button>
+                    <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => toggleFollow(p.id)} data-testid={`follow-btn-${p.id}`}>
+                      {following.has(p.id) ? 'Following' : 'Follow'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-          {personas.map((p) => (
+          {visiblePersonas.map((p) => (
             <div key={p.id} className="post" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
               <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => navigate(`/messages/${encodeURIComponent(p.id)}`)} data-testid={`dm-open-${p.id}`}>
                 <div style={{ fontWeight: 'bold' }}>{p.displayName}</div>
                 <div className="meta">@{p.handle}</div>
               </div>
-              <button className="btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }} onClick={() => toggleFollow(p.id)} data-testid={`follow-btn-${p.id}`}>
-                {following.has(p.id) ? 'Following' : 'Follow'}
-              </button>
+              <div className="field-row" style={{ flexShrink: 0, marginTop: 0 }}>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => toggleFavorite(p.id)} data-testid={`fav-btn-${p.id}`}>
+                  {favorites.has(p.id) ? '★' : '☆'}
+                </button>
+                <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => toggleFollow(p.id)} data-testid={`follow-btn-${p.id}`}>
+                  {following.has(p.id) ? 'Following' : 'Follow'}
+                </button>
+              </div>
             </div>
           ))}
-          {personas.length === 0 && query && <p className="meta">No personas found.</p>}
+          {visiblePersonas.length === 0 && query && <p className="meta">No personas found.</p>}
         </div>
       )}
 
@@ -207,7 +277,7 @@ export function SearchPage({ socialStore, dmStore }: SearchPageProps) {
           {dms.map((d) => (
             <div key={d.id} className="post">
               <div className="post-header">
-                <span style={{ fontWeight: 'bold' }}>{d.senderId}</span>
+                <span style={{ fontWeight: 'bold' }}>{d.senderId === 'user' ? 'You' : (names.get(d.senderId) ?? d.senderId)}</span>
                 <span className="time">{new Date(d.createdAt).toLocaleString()}</span>
               </div>
               <div className="post-body">{d.body}</div>

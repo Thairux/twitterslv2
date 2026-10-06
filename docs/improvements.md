@@ -172,3 +172,16 @@ Use this template for Loop 1 critique findings.
 - Verification:
   `npm run check`, `npm test`, and `npm run build` pass.
 - Closed: 2026-10-01
+
+## 2.0.0 migration critique (subagent discovery 2026-10-06, all accepted items implemented)
+
+| ID | Status | Severity | Area | Resolution |
+|---|---|---|---|---|
+| IMP-2.0-01 | CLOSED | HIGH | Friend identity | Triple friend identity (coral/Mimi/pearl) resolved via `primary_friend_id` + `/friend` resolver; Friend tab deterministic |
+| IMP-2.0-02 | CLOSED | HIGH | Visible stubs | Quote cards, display names everywhere, poll % fix, thread direct-parent labels |
+| IMP-2.0-03 | CLOSED | HIGH | Crash class | ThreadPage hooks-after-early-return crash fixed; audit found PersonaPage same class fixed |
+| IMP-2.0-04 | CLOSED | HIGH | Web SQL parity | `AS` aliases + ALTER TABLE support added to fallback; 17 queries repaired |
+| IMP-2.0-05 | CLOSED | MEDIUM | Stale clients | Ambient paths resolve live endpoint/key/model instead of boot-time client |
+| IMP-2.0-06 | OPEN (LOW, deferred w/ approval) | LOW | Muted words | Per-surface scope + expiry deferred; global list retained |
+| IMP-2.0-07 | OPEN (LOW, deferred w/ approval) | LOW | Chatter | Remains feed-adjacent; not removed pending product call |
+| IMP-2.0-08 | OPEN (LOW, deferred w/ approval) | LOW | Onboarding | Manual URL only; no auto-routing (cut-list item 9) |

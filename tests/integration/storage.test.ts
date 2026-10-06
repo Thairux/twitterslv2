@@ -73,8 +73,7 @@ describe('storage adapter contract', () => {
     expect(rows[0]?.displayName).toBe('Ax');
   });
 
-  test('provider templates CRUD with one-active-per-kind', async () => {
-    const store = new Store(new Database(await openDatabase('test-providers')));
+  test('provider templates CRUD with one-active-per-kind', async () => {    const store = new Store(new Database(await openDatabase('test-providers')));
     await store.upsertProvider({ id: 'k1', name: 'Kilo', kind: 'chat' });
     await store.upsertProvider({ id: 'k2', name: 'Kilo 2', kind: 'chat' });
     await store.setActiveProvider('chat', 'k1');
@@ -87,5 +86,36 @@ describe('storage adapter contract', () => {
     expect(list.find((p) => p.id === 'k1')?.selectedModel).toBe('m1');
     await store.deleteProvider('k2');
     expect((await store.listProviders()).map((p) => p.id)).toEqual(['k1']);
+  });
+
+  test('favorites toggle round-trips', async () => {
+    const store = new Store(new Database(await openDatabase('test-fav2')));
+    expect(await store.toggleFavorite('mimi')).toBe(true);
+    expect(await store.isFavorite('mimi')).toBe(true);
+    expect(await store.toggleFavorite('mimi')).toBe(false);
+    expect(await store.listFavorites()).toEqual([]);
+  });
+
+  test('drafts save, restore, and discard', async () => {
+    const store = new Store(new Database(await openDatabase('test-drafts')));
+    expect(await store.getDraft('compose-main')).toBeNull();
+    await store.saveDraft('compose-main', 'hello draft');
+    expect((await store.getDraft('compose-main'))?.body).toBe('hello draft');
+    await store.saveDraft('compose-main', 'edited');
+    expect((await store.getDraft('compose-main'))?.body).toBe('edited');
+    await store.deleteDraft('compose-main');
+    expect(await store.getDraft('compose-main')).toBeNull();
+  });
+
+  test('post views accumulate and notification reads persist', async () => {
+    const store = new Store(new Database(await openDatabase('test-views')));
+    await store.recordPostView('p1');
+    await store.recordPostView('p1');
+    await store.recordPostView('p2');
+    const counts = await store.getPostViewCounts();
+    expect(counts['p1']).toBe(2);
+    expect(counts['p2']).toBe(1);
+    await store.markNotificationRead('n1');
+    expect(await store.listNotificationReads()).toEqual(new Set(['n1']));
   });
 });

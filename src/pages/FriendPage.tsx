@@ -38,6 +38,7 @@ export function FriendPage() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [replying, setReplying] = useState(false);
+  const [seenCursor, setSeenCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +62,12 @@ export function FriendPage() {
         });
         setMessages(thread);
         store.markDmRead(threadId);
+        try {
+          const seen = await store.getAgentConfig(`seen:${threadId}`);
+          if (seen) setSeenCursor(seen.value);
+        } catch {
+          // ignore
+        }
         // Friend is always first to greet: on an empty thread, send one
         // greeting (once per browser session) so the chat never sits silent.
         if (thread.length === 0) {
@@ -115,6 +122,8 @@ export function FriendPage() {
       if (persona) {
         setReplying(true);
         try {
+          // Human-feeling pause before the reply starts arriving.
+          await new Promise((r) => setTimeout(r, 800 + Math.random() * 1400));
           const reply = await draftFriendReply(persona.displayName, userBody);
           const answer = {
             id: `dm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -126,6 +135,13 @@ export function FriendPage() {
           } as const;
           store.createDm(answer);
           setMessages((prev) => [...prev, answer]);
+          // Honest local receipt: the friend saw everything up to your message.
+          try {
+            await store.setAgentConfig(`seen:${threadId}`, dm.createdAt);
+          } catch {
+            // ignore
+          }
+          setSeenCursor(dm.createdAt);
         } finally {
           setReplying(false);
         }
@@ -176,6 +192,7 @@ export function FriendPage() {
       >
         {messages.map((m) => {
           const isMe = m.senderId === 'user';
+          const seen = isMe && seenCursor && m.createdAt <= seenCursor;
           return (
             <div
               key={m.id}
@@ -187,6 +204,7 @@ export function FriendPage() {
               }}
             >
               {m.body}
+              {seen && <div className="meta" style={{ fontSize: 10 }}>Seen</div>}
             </div>
           );
         })}

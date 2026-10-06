@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "loops": { "loop1": "pass", "loop2": "pass", "loop3": "pass" },
+  "openFindings": { "high": 0, "medium": 0, "lowDeferredApproved": 3 },
+  "tests": { "unit": 124, "e2e": 7, "failed": 0 },
+  "typecheck": "pass",
+  "build": "pass",
+  "releaseVerify": "pass",
+  "device": "adb install + clean-slate smoke + anonymous key probe"
+}

@@ -13,12 +13,13 @@ export async function generatePersona(
   modelClient: ModelClient,
   theme: string,
   existingRoles: string[] = [],
+  opts: { allowFriend?: boolean } = {},
 ): Promise<GeneratedPersona> {
-  const bannedRoles = ['friend', ...existingRoles];
+  const bannedRoles = opts.allowFriend ? existingRoles : ['friend', ...existingRoles];
   const prompt = `Generate a unique social persona for a microblogging simulation. Theme: ${theme}.
-Do NOT use these roles: ${bannedRoles.join(', ')}.
+Do NOT use these roles: ${bannedRoles.join(', ') || 'none'}.
 Return ONLY a JSON object with these exact keys: { "displayName": string, "handle": string, "role": string, "vibe": string, "bio": string, "avatarSeed": string }.
-Keep displayName and handle under 30 chars. Role should be one of: fan, peer, meme, troll, news.`;
+Keep displayName and handle under 30 chars. Role should be one of: ${opts.allowFriend ? 'friend, ' : ''}fan, peer, meme, troll, news.`;
 
   try {
     const text = await modelClient.chat([
@@ -38,8 +39,10 @@ Keep displayName and handle under 30 chars. Role should be one of: fan, peer, me
       avatarSeed: string;
     };
 
-    const validRoles = ['fan', 'peer', 'meme', 'troll', 'news'];
-    const role = (validRoles.includes(parsed.role) ? parsed.role : 'peer') as PersonaRole;
+    const validRoles = opts.allowFriend
+      ? ['friend', 'fan', 'peer', 'meme', 'troll', 'news']
+      : ['fan', 'peer', 'meme', 'troll', 'news'];
+    const role = (validRoles.includes(parsed.role) ? parsed.role : opts.allowFriend ? 'friend' : 'peer') as PersonaRole;
 
     return {
       persona: {
@@ -57,7 +60,7 @@ Keep displayName and handle under 30 chars. Role should be one of: fan, peer, me
       persona: {
         displayName: `Anon ${Math.floor(Math.random() * 1000)}`,
         handle: `@anon-${Math.floor(Math.random() * 1000)}`,
-        role: 'peer',
+        role: opts.allowFriend ? 'friend' : 'peer',
         vibe: 'mysterious',
         bio: 'generated offline',
         avatarSeed: `seed-${Date.now()}`,

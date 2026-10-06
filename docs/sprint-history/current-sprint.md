@@ -71,3 +71,4 @@ Multimodal routing and sidecar wiring are implemented. Remaining work:
 {"timestamp":"2026-10-05T20:24:52.118Z","sprint":"release-1.0.10","file":"src/lib/api/activity.ts","action":"live ambient client + rich pools"}
 {"timestamp":"2026-10-05T21:28:03.665Z","sprint":"release-1.0.11","file":"src/native/db.ts","action":"AS-alias projection + ALTER support"}
 {"timestamp":"2026-10-06T06:52:20.023Z","sprint":"release-1.0.12","file":"src/components/ProviderSettings.tsx","action":"provider templates + kind pickers"}
+{"timestamp":"2026-10-06T08:23:56.005Z","sprint":"release-2.0.0","file":"masterplanilandsmigration.md","action":"hybrid migration plan + sprints A-H"}

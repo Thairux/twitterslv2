@@ -6,7 +6,7 @@
 
 import { splitStatements } from '../lib/domain/sql';
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 17;
 
 export interface Migration {
   version: number;
@@ -238,5 +238,25 @@ export const MIGRATIONS: Migration[] = [
     version: 13,
     name: 'add-providers',
     sql: splitStatements(`CREATE TABLE IF NOT EXISTS providers (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'chat', selected_model TEXT, active INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 14,
+    name: 'add-favorites',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS favorites (persona_id TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 15,
+    name: 'add-drafts',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS drafts (id TEXT PRIMARY KEY, body TEXT NOT NULL DEFAULT '', quote_id TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 16,
+    name: 'add-post-views',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS post_views (post_id TEXT NOT NULL, viewer_id TEXT NOT NULL, viewed_at TEXT NOT NULL DEFAULT (datetime('now'))); CREATE INDEX IF NOT EXISTS idx_post_views_post ON post_views (post_id);`),
+  },
+  {
+    version: 17,
+    name: 'add-notification-reads',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS notification_reads (id TEXT PRIMARY KEY, read_at TEXT NOT NULL DEFAULT (datetime('now')));`),
   },
 ];

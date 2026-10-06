@@ -26,6 +26,10 @@ export const SCHEMA_TABLES = [
   'agent_config',
   'spawn_state',
   'providers',
+  'favorites',
+  'drafts',
+  'post_views',
+  'notification_reads',
 ] as const;
 
 export interface PersonaRow {

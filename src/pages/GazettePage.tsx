@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import type { SocialStore } from '../lib/api/social-store';
+import { useApi } from '../lib/api';
+import { usePersonaNames } from '../lib/api/use-persona-names';
+import { timeAgo } from '../components/PostCard';
 
 interface GazettePageProps {
   socialStore: SocialStore;
 }
 
 export function GazettePage({ socialStore }: GazettePageProps) {
+  const { store } = useApi();
   const [posts, setPosts] = useState<Array<{ id: string; authorId: string; body: string; createdAt: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const names = usePersonaNames(store);
 
   useEffect(() => {
     async function load() {
@@ -32,10 +38,10 @@ export function GazettePage({ socialStore }: GazettePageProps) {
       {posts.map((p) => (
         <div key={p.id} className="post">
           <div className="post-header">
-            <span style={{ fontWeight: 'bold' }}>{p.authorId}</span>
-            <span className="time">{new Date(p.createdAt).toLocaleString()}</span>
+            <span style={{ fontWeight: 'bold' }}>{p.authorId === 'user' ? 'You' : (names.get(p.authorId) ?? p.authorId)}</span>
+            <Link to={`/post/${p.id}`} className="time" style={{ textDecoration: 'none' }}>{timeAgo(p.createdAt)}</Link>
           </div>
-          <div className="post-body">{p.body}</div>
+          <Link to={`/post/${p.id}`} className="post-body">{p.body}</Link>
         </div>
       ))}
       {posts.length === 0 && <p className="meta">Nothing new in the last 24 hours.</p>}
