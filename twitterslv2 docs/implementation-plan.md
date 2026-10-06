@@ -29,8 +29,8 @@
 10. **World event refresh**: rotate on feed tab switch + periodic timer.
 
 ## Phase 3 — Documentation & Verification
-1. Update `docs/workflow/index.md` with new flows.
-2. Update `docs/competitor-gap-analysis.md` status after fixes.
+1. Update `twitterslv2 docs/workflow/index.md` with new flows.
+2. Update `twitterslv2 docs/competitor-gap-analysis.md` status after fixes.
 3. Run `npm run check`, `npm run test`, `npm run build`, `npm run test:e2e`.
 4. Run Playwright user-exploration loop and document findings.
 

@@ -10,9 +10,9 @@ offline" report, and six small audit gaps.
 - TSL neobrutalist app icon (black + purple `#tsl` plate + yellow/purple
   overlapping shadows) on Android (all densities) and web (manifest +
   favicon).
-- Docs: #tslp feature spec (`docs/features/tslp-admin.md`), full
-  app-feature inventory (`docs/features/app-features.md`), validated gaps
-  (`docs/inprogress/tslp-gaps.md`), sprint I, 2.0.0 + 2.1.0 changelog.
+- Docs: #tslp feature spec (`twitterslv2 docs/features/tslp-admin.md`), full
+  app-feature inventory (`twitterslv2 docs/features/app-features.md`), validated gaps
+  (`twitterslv2 docs/inprogress/tslp-gaps.md`), sprint I, 2.0.0 + 2.1.0 changelog.
 - Fixed ambient honesty: live endpoint client re-resolved on every ambient
   path, model on boot client, honest glimmer/offline origins, Save persists
   the model id, new Settings "Ambient engine" status line (LIVE vs offline
@@ -28,7 +28,7 @@ offline" report, and six small audit gaps.
   `npm run test:e2e` 7/7 incl. `tslp.spec.ts`; `npm run build` succeeds.
 - `assembleRelease` BUILD SUCCESSFUL, signed (CN=peter thairu muigai),
   `apksigner verify` pass; `npm run release:verify` pass.
-- Trackers: `docs/bugs.md` BUG-2.1-01…05 CLOSED; `docs/improvements.md`
+- Trackers: `twitterslv2 docs/bugs.md` BUG-2.1-01…05 CLOSED; `twitterslv2 docs/improvements.md`
   IMP-2.1-01…04 CLOSED; only the three approved 2.0.0 LOWs remain OPEN.
 
 ## Known limitations (unchanged, approved)

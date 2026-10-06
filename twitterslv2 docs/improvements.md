@@ -191,6 +191,6 @@ Use this template for Loop 1 critique findings.
 | ID | Status | Severity | Area | Resolution |
 |---|---|---|---|---|
 | IMP-2.1-01 | CLOSED | HIGH | Brand/icon | TSL neobrutalist icon generated (black + purple `#tsl` plate + yellow/purple shadows): `resources/icons/` masters, all Android mipmap densities, web icons + manifest + favicon |
-| IMP-2.1-02 | CLOSED | MEDIUM | Docs | #tslp spec (`docs/features/tslp-admin.md`), full inventory (`docs/features/app-features.md`), validated gaps (`docs/inprogress/tslp-gaps.md`), sprint I, CHANGELOG 2.0.0 + 2.1.0 |
+| IMP-2.1-02 | CLOSED | MEDIUM | Docs | #tslp spec (`twitterslv2 docs/features/tslp-admin.md`), full inventory (`twitterslv2 docs/features/app-features.md`), validated gaps (`twitterslv2 docs/inprogress/tslp-gaps.md`), sprint I, CHANGELOG 2.0.0 + 2.1.0 |
 | IMP-2.1-03 | CLOSED | MEDIUM | #tslp entry | Discoverability: Me-page `#tslp` entry card (`profile-tslp-entry`) alongside Settings link; tabbar unchanged by design |
 | IMP-2.1-04 | CLOSED | LOW | #tslp detail | Removed dead `likes: 0` stub field from detail post rows |

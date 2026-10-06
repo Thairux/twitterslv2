@@ -3,7 +3,7 @@
 > Generated from the codebase (`src/`, `src/store/migration-defs.ts`,
 > `src/App.tsx` routes). This is the source of truth for what the app DOES;
 > future plans live in `masterplanilandsmigration.md`, gaps in
-> `docs/inprogress/tslp-gaps.md`.
+> `twitterslv2 docs/inprogress/tslp-gaps.md`.
 
 ## Shell (`src/App.tsx`)
 
@@ -69,7 +69,7 @@
   24h digest).
 - **#tslp admin** (`/tslp`): all-persona phone grid, per-persona phone view
   (Posts / DMs w/ you / DMs w/ island + stats), favorites, global + favorite
-  dashboards, friend creator. Full spec: `docs/features/tslp-admin.md`.
+  dashboards, friend creator. Full spec: `twitterslv2 docs/features/tslp-admin.md`.
 
 ## Models & providers
 

@@ -1,6 +1,6 @@
 # #tslp / Migration Gaps (validated against code, 2.0.0 → 2.1.0)
 
-> Method: `docs/inprogress/ilands-discovery.md` claims + the #tslp brief
+> Method: `twitterslv2 docs/inprogress/ilands-discovery.md` claims + the #tslp brief
 > checked file-by-file against `src/`, `src/store/migration-defs.ts`
 > (SCHEMA_VERSION 17), and `releases/2.0.0/`. An independent audit subagent
 > re-checked the same surface; its findings are merged below.
@@ -45,9 +45,9 @@ Android mipmap densities, web `icons/` + manifest + favicon wiring.
 `CHANGELOG.md` jumped 1.0.12 → (nothing). Fix: full 2.0.0 entry + 2.1.0.
 
 ### G3 — Feature docs stale (OPEN → fixed 2.1.0)
-`docs/features/*.md` described the pre-migration app; no #tslp spec, no
-inventory. Fix: new `docs/features/tslp-admin.md` (spec),
-`docs/features/app-features.md` (full inventory), this file.
+`twitterslv2 docs/features/*.md` described the pre-migration app; no #tslp spec, no
+inventory. Fix: new `twitterslv2 docs/features/tslp-admin.md` (spec),
+`twitterslv2 docs/features/app-features.md` (full inventory), this file.
 
 ### G4 — #tslp discoverability (OPEN → improved 2.1.0)
 #tslp is reachable only via the Settings `#tslp admin` link — no tabbar

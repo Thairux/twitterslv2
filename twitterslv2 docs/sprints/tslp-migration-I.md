@@ -1,7 +1,7 @@
 # Sprint I — Icon, docs, ambient honesty (→ 2.1.0, minor)
 
-> Follows sprints A–H (see `docs/sprints/tslp-migration-{A..H}.md`).
-> Plan ref: `masterplanilandsmigration.md` §9. Gaps: `docs/inprogress/tslp-gaps.md`.
+> Follows sprints A–H (see `twitterslv2 docs/sprints/tslp-migration-{A..H}.md`).
+> Plan ref: `masterplanilandsmigration.md` §9. Gaps: `twitterslv2 docs/inprogress/tslp-gaps.md`.
 
 ## Goal
 
@@ -15,8 +15,8 @@ fix for the "endpoint OK but personas offline" report (G5).
   Android `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher[_round,_foreground].png`;
   web `assets/icons/icon-{192,512}.png` + `manifest.webmanifest` + favicon +
   `index.html` wiring + `assetlinks`-safe theme-color meta.
-- Docs: `docs/features/tslp-admin.md`, `docs/features/app-features.md`,
-  `docs/inprogress/tslp-gaps.md`, this file, CHANGELOG 2.0.0 + 2.1.0 entries,
+- Docs: `twitterslv2 docs/features/tslp-admin.md`, `twitterslv2 docs/features/app-features.md`,
+  `twitterslv2 docs/inprogress/tslp-gaps.md`, this file, CHANGELOG 2.0.0 + 2.1.0 entries,
   masterplan §9 status.
 - Code: `ambient-status.ts` (new), `bootstrap.ts` (model on boot client),
   `background.ts` (live resolve + honest origin), `sim-engine.ts` /

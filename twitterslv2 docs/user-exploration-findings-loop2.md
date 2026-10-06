@@ -21,7 +21,7 @@ However, static analysis and code review identified **9 findings** across the us
 |-------|--------|
 | `npm run test:e2e` | 4 passed (16.4s) |
 | `npm run test` | 99 passed (3.08s) |
-| `npm run check` | Clean (verified in docs/user-exploration-findings.md) |
+| `npm run check` | Clean (verified in twitterslv2 docs/user-exploration-findings.md) |
 | Brand guard | TSL renders, no AGY strings |
 | Core pages | Feed, Search, Profile, Notifications, DMs, Settings, Models render |
 | Compose + poll | Post creation with poll works |

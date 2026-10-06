@@ -16,4 +16,4 @@ function list(rel) {
   walk(base, 0);
   return out;
 }
-console.log(JSON.stringify({ src: list('src'), docs: list('docs'), agents: list('agents') }, null, 2));
+console.log(JSON.stringify({ src: list('src'), docs: list('twitterslv2 docs'), agents: list('agents') }, null, 2));

@@ -7,7 +7,7 @@ Capacitor + Vite + React + TypeScript port of v1 (`../twittersl`, which is Expo)
 Implemented through the Sprint 7 models/endpoint surface. The active gate is
 manual verification of catalogue loading, GGUF file enumeration, download
 progress/cancellation/resume, and Downloads cleanup. See
-`docs/inprogress/COPILOT_HANDOFF.md` and `masterplan.md`.
+`twitterslv2 docs/inprogress/COPILOT_HANDOFF.md` and `masterplan.md`.
 
 ## Quickstart
 ```sh
@@ -22,7 +22,7 @@ npm run cap:sync   # after build, wire native shells
 
 ## Docs
 - `masterplan.md` — phases, sprint scope, structure, and current status
-- `docs/` — architecture, backend, frontend, features, domain, getting-started
+- `twitterslv2 docs/` — architecture, backend, frontend, features, domain, getting-started
 - `agents/` — project-scoped skills, rules, hooks (source of truth)
 - `alldemos/ocdemo/` — UI truth (TSL-branded port of the v1 AgyDemo)
 - `alldemos/agydemo/` — archived v1 demo, untouched reference

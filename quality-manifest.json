@@ -2,17 +2,17 @@
   "version": "2.1.0",
   "loop1": {
     "iterations": 30,
-    "output": "docs/improvements.md",
+    "output": "twitterslv2 docs/improvements.md",
     "prompt": "Critique the current application state against industry standards, competitors, UX conventions, and commercial viability. Record every gap as an improvement finding with severity, area, evidence, and acceptance criteria. Do not close findings without verification."
   },
   "loop2": {
     "iterations": 30,
-    "output": "docs/bugs.md",
+    "output": "twitterslv2 docs/bugs.md",
     "prompt": "Explore the application end-to-end using browser and automation tools. For each feature, identify real usage bugs. Record steps to reproduce, expected behavior, actual behavior, and severity. Do not close findings without verification."
   },
   "loop3": {
     "iterations": 30,
-    "output": "docs/regressions.md",
+    "output": "twitterslv2 docs/regressions.md",
     "prompt": "Run the existing regression suite and previously verified workflows. Detect regressions caused by recent fixes. Record failing cases with steps, expected behavior, actual behavior, and source. If behavior intentionally changed, update the case instead of closing it."
   },
   "build": {
@@ -38,6 +38,6 @@
   },
   "regression": {
     "retireAfterVersions": 3,
-    "archiveFile": "docs/regressions-archive.md"
+    "archiveFile": "twitterslv2 docs/regressions-archive.md"
   }
 }

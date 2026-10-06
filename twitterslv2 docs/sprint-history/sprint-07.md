@@ -50,10 +50,10 @@ recorded; automated verification is green.
 - `npm run check` — passed.
 - `npm test` — passed: 3 files, 99 tests.
 - `npm run build` — passed.
-- All Loop 1/2 findings moved to CLOSED in `docs/improvements.md` and
-  `docs/bugs.md`.
+- All Loop 1/2 findings moved to CLOSED in `twitterslv2 docs/improvements.md` and
+  `twitterslv2 docs/bugs.md`.
 
 ## Handoff
 
-- `docs/inprogress/COPILOT_HANDOFF.md` updated with current state, next steps,
+- `twitterslv2 docs/inprogress/COPILOT_HANDOFF.md` updated with current state, next steps,
   and session ID `ses_f17a252aaffemPkN90WfPEEFe8`.

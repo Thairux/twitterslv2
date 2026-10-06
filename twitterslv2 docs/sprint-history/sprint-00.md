@@ -8,7 +8,7 @@
 - 16 skills + 12 rules + hook + lockfile; 4-skill mirrors in `.agents/`, `.claude/`.
 - `alldemos/agydemo/` frozen archive; `alldemos/ocdemo/` TSL rebrand (titles, logo,
   `ocdemo-` keys, models tabbar fix) + DEMO.md.
-- `masterplan.md` draft + docs scaffold + `docs/sprints/sprint-01..08.md`.
+- `masterplan.md` draft + docs scaffold + `twitterslv2 docs/sprints/sprint-01..08.md`.
 - Tests: placeholder domain probe + adapter contract stub + E2E brand guard.
 
 ## Verification

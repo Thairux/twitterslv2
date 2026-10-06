@@ -18,7 +18,7 @@ personas")** admin panel.
   block-with-cleanup, 1500 persona cap with named spawns.
 
 ## Verification (SQM gates)
-- Loop 1 critique: subagent discovery (`docs/inprogress/ilands-discovery.md`);
+- Loop 1 critique: subagent discovery (`twitterslv2 docs/inprogress/ilands-discovery.md`);
   all HIGH/MEDIUM accepted → implemented; 3 LOWs deferred with approval.
 - Loop 2 validation: 7 Playwright specs incl. new `tslp.spec.ts`; adb
   on-device pass on clean slate with anonymous key test.

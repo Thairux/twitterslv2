@@ -10,7 +10,7 @@ Load before declaring ANY sprint complete. All gates must pass:
 6. `npm run check` clean; no new lint errors.
 7. Invariants intact (friend-first, secrets, consent, append-only schema, TSL brand).
 8. Demo parity: touched screens still match `alldemos/ocdemo/`.
-9. Docs: `docs/sprint-history/sprint-{N}.md` written; HANDOFF updated if needed.
+9. Docs: `twitterslv2 docs/sprint-history/sprint-{N}.md` written; HANDOFF updated if needed.
 10. Hook log: `post-file-change-hook.js` row appended (or batched at sprint end).
 11. No unresolved TODOs left in sprint files without a follow-up sprint ID.
 

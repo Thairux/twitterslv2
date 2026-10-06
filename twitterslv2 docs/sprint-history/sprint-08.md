@@ -1,7 +1,7 @@
 # Sprint 08 — 2.1.0: icon, docs, ambient honesty (sprint I)
 
-> Plan: `docs/sprints/tslp-migration-I.md` + `masterplanilandsmigration.md` §9.
-> Gaps: `docs/inprogress/tslp-gaps.md`. Release: `releases/2.1.0/`.
+> Plan: `twitterslv2 docs/sprints/tslp-migration-I.md` + `masterplanilandsmigration.md` §9.
+> Gaps: `twitterslv2 docs/inprogress/tslp-gaps.md`. Release: `releases/2.1.0/`.
 
 ## What
 Minor release (no schema change, v17; no tabbar change). Closed post-2.0.0
@@ -18,7 +18,7 @@ offline" ambient bug, six audit S-gaps.
   `ChatterPage.tsx`, `PostCard.tsx`, `DMsPage.tsx`, `ProfilePage.tsx`,
   `TslpPage.tsx`, `index.html`, `package.json`, `android/app/build.gradle`,
   `quality-manifest.json`, `CHANGELOG.md`, `masterplanilandsmigration.md`,
-  `docs/bugs.md`, `docs/improvements.md`, `tests/unit/tslp.test.ts`.
+  `twitterslv2 docs/bugs.md`, `twitterslv2 docs/improvements.md`, `tests/unit/tslp.test.ts`.
 
 ## Verification
 - `npm run check` clean; `npm run test` 133/133; `npm run test:e2e` 7/7;
