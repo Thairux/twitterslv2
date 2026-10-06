@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Database } from './db';
 import type { Post, Reply } from '../domain/post';
 import type { Persona as PersonaDomain } from '../domain/persona';
+import type { ProviderRow as Provider, ProviderKind } from '@/store/schema';
 
 // --- Local interfaces for entities not yet promoted to domain ---
 
@@ -599,9 +600,60 @@ export class Store {
     await this.db.run('DELETE FROM bookmarks WHERE post_id = ?', [postId]);
   }
 
+  // Providers — saved model-provider templates (OpenCode-style). Secrets
+  // (endpoint URL + API key) live in Preferences, never here (rule 07).
+  async listProviders(): Promise<Provider[]> {
+    const rows = await this.query<any>('SELECT * FROM providers ORDER BY created_at ASC');
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      kind: r.kind === 'image' || r.kind === 'caption' ? r.kind : 'chat',
+      selectedModel: r.selected_model ?? undefined,
+      active: r.active === 1,
+      createdAt: r.created_at,
+    }));
+  }
+
+  async upsertProvider(p: { id: string; name: string; kind: ProviderKind; selectedModel?: string; active?: boolean }): Promise<void> {
+    const now = new Date().toISOString();
+    const existing = await this.selectOne<{ id: string }>('SELECT id FROM providers WHERE id = ?', [p.id]);
+    if (existing) {
+      await this.db.run('UPDATE providers SET name = ?, kind = ?, selected_model = ? WHERE id = ?', [p.name, p.kind, p.selectedModel ?? null, p.id]);
+      if (p.active !== undefined) {
+        await this.db.run('UPDATE providers SET active = ? WHERE id = ?', [p.active ? 1 : 0, p.id]);
+      }
+    } else {
+      await this.db.run('INSERT INTO providers (id, name, kind, selected_model, active, created_at) VALUES (?, ?, ?, ?, ?, ?)', [p.id, p.name, p.kind, p.selectedModel ?? null, p.active ? 1 : 0, now]);
+    }
+  }
+
+  async deleteProvider(id: string): Promise<void> {
+    await this.db.run('DELETE FROM providers WHERE id = ?', [id]);
+  }
+
+  /** Exactly one active provider per kind. */
+  async setActiveProvider(kind: ProviderKind, id: string | null): Promise<void> {
+    await this.db.run('UPDATE providers SET active = 0 WHERE kind = ?', [kind]);
+    if (id) {
+      await this.db.run('UPDATE providers SET active = 1 WHERE id = ? AND kind = ?', [id, kind]);
+    }
+  }
+
+  async getActiveProvider(kind: ProviderKind): Promise<Provider | null> {
+    const row = await this.selectOne<any>('SELECT * FROM providers WHERE kind = ? AND active = 1', [kind]);
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      selectedModel: row.selected_model ?? undefined,
+      active: true,
+      createdAt: row.created_at,
+    };
+  }
+
   // Memories
-  async createPendingMemory(m: { id: string; personaId: string; fact: string }): Promise<void> {
-    Schemas.Memory.parse({ id: m.id, personaId: m.personaId, fact: m.fact, consented: false, createdAt: new Date().toISOString() });
+  async createPendingMemory(m: { id: string; personaId: string; fact: string }): Promise<void> {    Schemas.Memory.parse({ id: m.id, personaId: m.personaId, fact: m.fact, consented: false, createdAt: new Date().toISOString() });
     await this.db.run('INSERT INTO pending_memories (id, persona_id, fact, created_at) VALUES (?, ?, ?, ?)', [m.id, m.personaId, m.fact, new Date().toISOString()]);
   }
   async approveMemory(pendingId: string): Promise<void> {

@@ -2,7 +2,7 @@
 // Reads from native secrets first, falls back to Vite env, never hardcoded.
 // Secrets come from native/secrets.ts (rule 07).
 
-import { getModelEndpoint as _getModelEndpoint, getApiKey as _getApiKey, getImageGenEndpoint as _getImageGenEndpoint, getCaptionEndpoint as _getCaptionEndpoint, getSelectedModel as _getSelectedModel } from '../native/secrets';
+import { getModelEndpoint as _getModelEndpoint, getApiKey as _getApiKey, getImageGenEndpoint as _getImageGenEndpoint, getCaptionEndpoint as _getCaptionEndpoint, getSelectedModel as _getSelectedModel, getSelectedImageModel as _getSelectedImageModel, getSelectedCaptionModel as _getSelectedCaptionModel } from '../native/secrets';
 
 function getEnvEndpoint(): string {
   try {
@@ -34,6 +34,8 @@ export interface AppConfig {
   imageGenEndpoint: string;
   captionEndpoint: string;
   selectedModel: string | null;
+  selectedImageModel: string | null;
+  selectedCaptionModel: string | null;
   featureFlags: {
     enableSimulation: boolean;
     enableNotifications: boolean;
@@ -49,6 +51,8 @@ let cachedApiKey: string | null = null;
 let cachedImageGenEndpoint: string | null = null;
 let cachedCaptionEndpoint: string | null = null;
 let cachedSelectedModel: string | null = null;
+let cachedSelectedImageModel: string | null = null;
+let cachedSelectedCaptionModel: string | null = null;
 
 async function resolveEndpoint(): Promise<string> {
   if (cachedEndpoint) return cachedEndpoint;
@@ -80,6 +84,18 @@ async function resolveSelectedModel(): Promise<string | null> {
   return cachedSelectedModel;
 }
 
+async function resolveSelectedImageModel(): Promise<string | null> {
+  if (cachedSelectedImageModel !== null) return cachedSelectedImageModel;
+  cachedSelectedImageModel = await _getSelectedImageModel();
+  return cachedSelectedImageModel;
+}
+
+async function resolveSelectedCaptionModel(): Promise<string | null> {
+  if (cachedSelectedCaptionModel !== null) return cachedSelectedCaptionModel;
+  cachedSelectedCaptionModel = await _getSelectedCaptionModel();
+  return cachedSelectedCaptionModel;
+}
+
 export async function getModelEndpoint(): Promise<string> {
   return resolveEndpoint();
 }
@@ -100,6 +116,14 @@ export async function getSelectedModel(): Promise<string | null> {
   return resolveSelectedModel();
 }
 
+export async function getSelectedImageModel(): Promise<string | null> {
+  return resolveSelectedImageModel();
+}
+
+export async function getSelectedCaptionModel(): Promise<string | null> {
+  return resolveSelectedCaptionModel();
+}
+
 export const config: AppConfig = {
   get modelEndpoint() {
     return cachedEndpoint ?? getEnvEndpoint();
@@ -115,6 +139,12 @@ export const config: AppConfig = {
   },
   get selectedModel() {
     return cachedSelectedModel ?? null;
+  },
+  get selectedImageModel() {
+    return cachedSelectedImageModel ?? null;
+  },
+  get selectedCaptionModel() {
+    return cachedSelectedCaptionModel ?? null;
   },
   featureFlags: {
     enableSimulation: true,
@@ -132,9 +162,13 @@ export async function refreshConfig(): Promise<void> {
   cachedImageGenEndpoint = null;
   cachedCaptionEndpoint = null;
   cachedSelectedModel = null;
+  cachedSelectedImageModel = null;
+  cachedSelectedCaptionModel = null;
   await resolveEndpoint();
   await resolveApiKey();
   await resolveImageGenEndpoint();
   await resolveCaptionEndpoint();
   await resolveSelectedModel();
+  await resolveSelectedImageModel();
+  await resolveSelectedCaptionModel();
 }

@@ -25,8 +25,14 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
   const [cancelIds, setCancelIds] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<Record<string, { downloadedBytes: number; sizeBytes: number; status: string; filename?: string }>>({});
   const [error, setError] = useState('');
-  const [catalogue, setCatalogue] = useState<Array<{ id: string; author: string; modelName: string; siblings?: Array<{ filename: string; size: number }> }>>([]);
+  const [catalogue, setCatalogue] = useState<Array<{ id: string; author: string; modelName: string; modelType?: string; siblings?: Array<{ filename: string; size: number }> }>>([]);
   const [loadingCatalogue, setLoadingCatalogue] = useState(false);
+
+function typeLabel(t?: string): string {
+  if (t === 'image') return '[IMAGE]';
+  if (t === 'caption') return '[CAPTION]';
+  return '[CHAT]';
+}
 
   useEffect(() => {
     if (tab === 'down') {
@@ -359,7 +365,8 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
             <div key={c.id} className="model-card" data-testid="catalogue-entry">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                  <b style={{ wordBreak: 'break-all' }}>{c.modelName}</b>
+                  <b style={{ wordBreak: 'break-all' }}>{c.modelName}</b>{' '}
+                  <span className="meta" data-testid={`catalogue-type-${c.id}`}>{typeLabel(c.modelType)}</span>
                   <div className="meta">Repo: {c.id}</div>
                 </div>
                 <div className="field-row" style={{ flexShrink: 0 }}>

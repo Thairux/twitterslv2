@@ -4,6 +4,7 @@ import type { Store } from '../lib/api/store';
 import type { Secrets } from '../lib/api/secrets';
 import type { FilesAdapter } from '../native/files';
 import { useApi } from '../lib/api';
+import { ProviderManager, ModelKindPicker } from '../components/ProviderSettings';
 import { ModelClient, normalizeEndpoint } from '../lib/api/model-client';
 import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
@@ -537,6 +538,23 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       </div>
 
       <br/><br/>
+      <h3 style={{ marginBottom: 8 }}>Model Providers</h3>
+      <p className="meta" style={{ marginBottom: 8 }}>
+        Each provider is its own template (name, kind, endpoint, key, model).
+        Credentials persist on this device across restarts. Activate one per
+        kind with <b>Use</b> — it loads into the matching slot above.
+      </p>
+      <ProviderManager store={store} secrets={secrets} />
+
+      <br/><br/>
+      <h3 style={{ marginBottom: 8 }}>Image Model</h3>
+      <ModelKindPicker kind="image" store={store} secrets={secrets} localModels={localModels} />
+
+      <br/><br/>
+      <h3 style={{ marginBottom: 8 }}>Caption Model</h3>
+      <ModelKindPicker kind="caption" store={store} secrets={secrets} localModels={localModels} />
+
+      <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Data</h3>
       <p className="meta" data-testid="storage-backend">
         Storage: <b>{lastOpenBackend === 'native' ? 'on-device database (survives restarts)' : lastOpenBackend === 'web' ? 'in-memory (data is lost on restart!) — reinstall or report this' : 'unknown'}</b>
@@ -610,7 +628,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
           placeholder="Add word to mute..."
           className="input-field"
         />
-        <button className="btn" onClick={async () => { if (!newWord.trim()) return; await store.addMutedWord(newWord.trim()); setNewWord(''); const words = await store.listMutedWords(); setMutedWords(words); }}>Add</button>
+        <button className="btn" data-testid="mute-add" onClick={async () => { if (!newWord.trim()) return; await store.addMutedWord(newWord.trim()); setNewWord(''); const words = await store.listMutedWords(); setMutedWords(words); }}>Add</button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {mutedWords.map((w) => (

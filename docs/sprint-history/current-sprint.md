@@ -70,3 +70,4 @@ Multimodal routing and sidecar wiring are implemented. Remaining work:
 {"timestamp":"2026-10-05T19:01:23.166Z","sprint":"release-1.0.9","file":"src/lib/api/activity.ts","action":"island liveliness engine + follow seed"}
 {"timestamp":"2026-10-05T20:24:52.118Z","sprint":"release-1.0.10","file":"src/lib/api/activity.ts","action":"live ambient client + rich pools"}
 {"timestamp":"2026-10-05T21:28:03.665Z","sprint":"release-1.0.11","file":"src/native/db.ts","action":"AS-alias projection + ALTER support"}
+{"timestamp":"2026-10-06T06:52:20.023Z","sprint":"release-1.0.12","file":"src/components/ProviderSettings.tsx","action":"provider templates + kind pickers"}

@@ -9,6 +9,10 @@ const KEY_APIKEY = `${WEB_NS}apikey`;
 const KEY_IMAGE_GEN_ENDPOINT = `${WEB_NS}image-gen-endpoint`;
 const KEY_CAPTION_ENDPOINT = `${WEB_NS}caption-endpoint`;
 const KEY_SELECTED_MODEL = `${WEB_NS}selected-model`;
+const KEY_SELECTED_IMAGE_MODEL = `${WEB_NS}selected-image-model`;
+const KEY_SELECTED_CAPTION_MODEL = `${WEB_NS}selected-caption-model`;
+const providerEndpointKey = (id: string) => `${WEB_NS}provider-${id}-endpoint`;
+const providerApiKey = (id: string) => `${WEB_NS}provider-${id}-apikey`;
 
 const WEB_SECRET = 'tsl-web-obfuscation-key';
 
@@ -52,11 +56,18 @@ async function secureGet(key: string): Promise<string | null> {
   try {
     const mod = await import('@capacitor/community/secure-storage');
     const { SecureStoragePlugin } = mod;
-    if (!SecureStoragePlugin) return null;
+    if (!SecureStoragePlugin) return prefGet(key);
     const { value } = await SecureStoragePlugin.get({ key });
     return value ?? null;
   } catch {
-    return null;
+    // Plugin missing (or entry absent): fall back to Preferences, which is
+    // also where secureSet stores when the plugin is unavailable. Without
+    // this fallback, saved keys read back as empty.
+    try {
+      return await prefGet(key);
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -79,6 +90,13 @@ async function secureDel(key: string): Promise<void> {
     const mod = await import('@capacitor/community/secure-storage');
     const { SecureStoragePlugin } = mod;
     if (SecureStoragePlugin) await SecureStoragePlugin.remove({ key });
+  } catch {
+    // ignore
+  }
+  // Always clear the Preferences fallback copy too.
+  try {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.remove({ key });
   } catch {
     // ignore
   }
@@ -179,5 +197,66 @@ export async function setSelectedModel(modelId: string): Promise<void> {
     await prefSet(KEY_SELECTED_MODEL, modelId);
   } else {
     localStorage.setItem(KEY_SELECTED_MODEL, modelId);
+  }
+}
+
+export async function getSelectedImageModel(): Promise<string | null> {
+  if (isNative()) return await prefGet(KEY_SELECTED_IMAGE_MODEL);
+  return localStorage.getItem(KEY_SELECTED_IMAGE_MODEL);
+}
+
+export async function setSelectedImageModel(modelId: string): Promise<void> {
+  if (isNative()) {
+    await prefSet(KEY_SELECTED_IMAGE_MODEL, modelId);
+  } else {
+    localStorage.setItem(KEY_SELECTED_IMAGE_MODEL, modelId);
+  }
+}
+
+export async function getSelectedCaptionModel(): Promise<string | null> {
+  if (isNative()) return await prefGet(KEY_SELECTED_CAPTION_MODEL);
+  return localStorage.getItem(KEY_SELECTED_CAPTION_MODEL);
+}
+
+export async function setSelectedCaptionModel(modelId: string): Promise<void> {
+  if (isNative()) {
+    await prefSet(KEY_SELECTED_CAPTION_MODEL, modelId);
+  } else {
+    localStorage.setItem(KEY_SELECTED_CAPTION_MODEL, modelId);
+  }
+}
+
+/** Per-provider secrets (rule 07: endpoints + keys never touch SQLite). */
+export async function getProviderEndpoint(id: string): Promise<string> {
+  return (await prefGet(providerEndpointKey(id))) ?? '';
+}
+
+export async function setProviderEndpoint(id: string, url: string): Promise<void> {
+  await prefSet(providerEndpointKey(id), url);
+}
+
+export async function getProviderApiKey(id: string): Promise<string | null> {
+  const fromSecure = await secureGet(providerApiKey(id));
+  if (fromSecure !== null) return fromSecure;
+  return prefGet(providerApiKey(id));
+}
+
+export async function setProviderApiKey(id: string, key: string): Promise<void> {
+  await secureSet(providerApiKey(id), key);
+}
+
+export async function clearProviderSecrets(id: string): Promise<void> {
+  await secureDel(providerApiKey(id));
+  try {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.remove({ key: providerEndpointKey(id) });
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.removeItem(providerEndpointKey(id));
+    localStorage.removeItem(providerApiKey(id));
+  } catch {
+    // ignore (native has no localStorage)
   }
 }

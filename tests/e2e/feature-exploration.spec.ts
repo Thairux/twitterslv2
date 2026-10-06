@@ -47,7 +47,7 @@ test.describe('Feature exploration loop', () => {
     const muteInput = page.locator('.input-field[placeholder="Add word to mute..."]');
     if (await muteInput.count() > 0) {
       await muteInput.fill('test');
-      await page.locator('.btn:has-text("Add")').click();
+      await page.getByTestId('mute-add').click();
       await page.waitForTimeout(500);
     }
 

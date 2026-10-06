@@ -114,6 +114,14 @@ test.describe('App exploration (usability bug hunt)', () => {
     await page.waitForTimeout(500);
     await expect(page.locator('[data-testid="following-list"]')).toBeVisible();
 
+    // 4c. Providers section renders with add form + per-kind pickers.
+    await page.goto('/#/settings');
+    await page.waitForTimeout(800);
+    await expect(page.locator('[data-testid="provider-manager"]')).toBeVisible();
+    await expect(page.locator('[data-testid="provider-name-input"]')).toBeVisible();
+    await expect(page.locator('[data-testid="image-picker"]')).toBeVisible();
+    await expect(page.locator('[data-testid="caption-picker"]')).toBeVisible();
+
     // 4b. Search is one tap away and suggests islanders to follow.
     await page.goto('/#/');
     await page.waitForTimeout(500);

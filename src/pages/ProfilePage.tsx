@@ -6,14 +6,15 @@ import { useNavigate } from 'react-router-dom';
 import type { Post } from '../lib/domain/post';
 import type { UserProfile, Bookmark } from '../lib/api/store';
 import { useApi } from '../lib/api';
+import { useBlobUrl } from '../lib/api/use-blob-url';
 import { PostCard } from '../components/PostCard';
 import { usePolls } from '../lib/api/use-polls';
 import { usePollVotes } from '../lib/api/use-poll-votes';
 
 export function ProfilePage() {
-  const { store } = useApi();
-  const navigate = useNavigate();
+  const { store, nativeFiles } = useApi();  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile>({ displayName: 'You', handle: '@you', bio: '' });
+  const avatarUrl = useBlobUrl(nativeFiles, profile.avatarPath || undefined);
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
@@ -122,9 +123,13 @@ export function ProfilePage() {
   return (
     <div className="content-area">
       <div style={{ position: 'relative', width: 80, height: 80, marginBottom: 16 }}>
-        <div className="avatar" style={{ width: 80, height: 80, background: 'var(--accent)', color: 'var(--bg)', fontSize: 32 }}>
-          {profile.displayName?.[0] ?? '?'}
-        </div>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="avatar" style={{ width: 80, height: 80, borderRadius: '50%', border: 'var(--border-width) solid var(--border)', objectFit: 'cover', display: 'block' }} data-testid="profile-avatar-img" />
+        ) : (
+          <div className="avatar" style={{ width: 80, height: 80, background: 'var(--accent)', color: 'var(--bg)', fontSize: 32 }}>
+            {profile.displayName?.[0] ?? '?'}
+          </div>
+        )}
         {!editing && (
           <button
             onClick={() => setEditing(true)}
@@ -138,6 +143,28 @@ export function ProfilePage() {
 
       {editing ? (
         <div style={{ marginBottom: 16 }}>
+          <label className="meta">Profile picture</label>
+          <div className="field-row" style={{ marginBottom: 8 }}>
+            <input
+              type="file"
+              accept="image/*"
+              className="input-field"
+              data-testid="avatar-input"
+              onChange={async (e) => {
+                try {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const bytes = new Uint8Array(await file.arrayBuffer());
+                  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '');
+                  const path = `avatars/${Date.now()}-${safeName}`;
+                  await nativeFiles.saveBlob(path, bytes);
+                  setProfile((prev) => ({ ...prev, avatarPath: path }));
+                } catch (err) {
+                  console.error('Avatar upload failed:', err);
+                }
+              }}
+            />
+          </div>
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}

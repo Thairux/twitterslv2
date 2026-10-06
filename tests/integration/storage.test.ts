@@ -62,8 +62,7 @@ describe('storage adapter contract', () => {
     expect(replies.find((r) => r.id === 'r2')?.parentReplyId).toBe('r1');
   });
 
-  test('aliased selects project correctly on all adapters', async () => {
-    const store = new Store(new Database(await openDatabase('test-alias')));
+  test('aliased selects project correctly on all adapters', async () => {    const store = new Store(new Database(await openDatabase('test-alias')));
     await store.upsertPersona({
       id: 'ax', handle: 'ax', displayName: 'Ax', role: 'peer', vibe: 't',
       bio: '', avatarSeed: 'ax', affinity: 0.5, active: true, spawnedWeek: 0,
@@ -72,5 +71,21 @@ describe('storage adapter contract', () => {
       'SELECT id, display_name AS displayName FROM personas WHERE id = ?', ['ax'],
     );
     expect(rows[0]?.displayName).toBe('Ax');
+  });
+
+  test('provider templates CRUD with one-active-per-kind', async () => {
+    const store = new Store(new Database(await openDatabase('test-providers')));
+    await store.upsertProvider({ id: 'k1', name: 'Kilo', kind: 'chat' });
+    await store.upsertProvider({ id: 'k2', name: 'Kilo 2', kind: 'chat' });
+    await store.setActiveProvider('chat', 'k1');
+    expect((await store.getActiveProvider('chat'))?.id).toBe('k1');
+    await store.setActiveProvider('chat', 'k2');
+    expect((await store.getActiveProvider('chat'))?.id).toBe('k2');
+    await store.upsertProvider({ id: 'k1', name: 'Kilo renamed', kind: 'chat', selectedModel: 'm1' });
+    const list = await store.listProviders();
+    expect(list.find((p) => p.id === 'k1')?.name).toBe('Kilo renamed');
+    expect(list.find((p) => p.id === 'k1')?.selectedModel).toBe('m1');
+    await store.deleteProvider('k2');
+    expect((await store.listProviders()).map((p) => p.id)).toEqual(['k1']);
   });
 });

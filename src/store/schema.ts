@@ -2,7 +2,8 @@
 // table-for-table via @capacitor-community/sqlite; additive migrations only).
 // Tables (v1 parity): personas, posts, replies, reactions, dms, memories,
 // pending_memories, follows, followers, mutes, reports, bookmarks, downloaded_models,
-// generated_images, world_events, dm_reads, user_profile, agent_config, spawn_state.
+// generated_images, world_events, dm_reads, user_profile, agent_config, spawn_state,
+// providers.
 
 export const SCHEMA_TABLES = [
   'personas',
@@ -24,6 +25,7 @@ export const SCHEMA_TABLES = [
   'user_profile',
   'agent_config',
   'spawn_state',
+  'providers',
 ] as const;
 
 export interface PersonaRow {
@@ -37,6 +39,17 @@ export interface PersonaRow {
   affinity: number;
   active: boolean;
   spawnedWeek: number;
+  createdAt: string;
+}
+
+export type ProviderKind = 'chat' | 'image' | 'caption';
+
+export interface ProviderRow {
+  id: string;
+  name: string;
+  kind: ProviderKind;
+  selectedModel?: string;
+  active: boolean;
   createdAt: string;
 }
 

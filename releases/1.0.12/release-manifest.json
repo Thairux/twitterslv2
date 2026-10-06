@@ -1,0 +1,21 @@
+{
+  "version": "1.0.12",
+  "releasedAt": "2026-10-06T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "features": [
+    "Key persistence fallback fix with stored indicator",
+    "Per-kind provider templates with discovery and activation",
+    "Image/caption model pickers (cloud + local)",
+    "Editable profile pictures",
+    "Catalogue type badges"
+  ],
+  "artifacts": [
+    "releases/1.0.12/twitterslv2-1.0.12-release.apk"
+  ]
+}
