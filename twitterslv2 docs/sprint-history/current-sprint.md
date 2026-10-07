@@ -74,3 +74,6 @@ Multimodal routing and sidecar wiring are implemented. Remaining work:
 {"timestamp":"2026-10-06T08:23:56.005Z","sprint":"release-2.0.0","file":"masterplanilandsmigration.md","action":"hybrid migration plan + sprints A-H"}
 {"timestamp":"2026-10-06T09:19:10.109Z","sprint":"sprint-I","file":"src/lib/api/ambient-status.ts","action":"ambient honesty fix + diagnostics"}
 {"timestamp":"2026-10-06T09:19:10.231Z","sprint":"sprint-I","file":"resources/icons/tsl-icon-512.png","action":"TSL neobrutalist app icon set"}
+{"timestamp":"2026-10-07T02:47:09.004Z","sprint":"sprint-09","file":"src/lib/api/inference-policy.ts","action":"strict policy + states + cooldown + shared builder"}
+{"timestamp":"2026-10-07T02:47:09.133Z","sprint":"sprint-09","file":"src/lib/api/providers.ts","action":"v19 profiles + chain + budgets + migration"}
+{"timestamp":"2026-10-07T02:47:09.249Z","sprint":"sprint-09","file":"releases/3.0.0","action":"3.0.0 alive island release"}

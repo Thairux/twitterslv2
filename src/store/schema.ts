@@ -30,6 +30,19 @@ export const SCHEMA_TABLES = [
   'drafts',
   'post_views',
   'notification_reads',
+  'muted_word_rules',
+  'provider_profiles',
+  'persona_providers',
+  'provider_models_cache',
+  'relationships',
+  'persona_state',
+  'stories',
+  'story_views',
+  'dm_reactions',
+  'bookmark_folders',
+  'bookmark_folder_items',
+  'pinned_threads',
+  'persona_badges',
 ] as const;
 
 export interface PersonaRow {

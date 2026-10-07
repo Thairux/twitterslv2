@@ -13,6 +13,21 @@ body {
   display: flex;
   justify-content: center;
   min-height: 100vh;
+  font-size: calc(15px * var(--font-scale, 1));
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 .phone {

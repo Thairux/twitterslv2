@@ -1,18 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { attachErrorCollectors } from './console-filter';
+import { gotoFeed } from './boot';
 
 test.describe('Gap validation loop', () => {
   test('validate fixes from critique', async ({ page }) => {
     test.setTimeout(120000);
     const { consoleErrors: errors, pageErrors } = attachErrorCollectors(page);
 
-    await page.goto('/');
-    const locked = await page.locator('.input-field[type="password"]').count();
-    if (locked > 0) {
-      await page.getByPlaceholder('Enter PIN to unlock.').fill('0000');
-      await page.getByRole('button', { name: 'Unlock' }).click();
-      await page.waitForTimeout(1000);
-    }
+    await gotoFeed(page);
 
     // Feed tab switch should not crash and should load posts
     await expect(page.locator('.logo')).toHaveText('TSL');

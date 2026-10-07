@@ -4,6 +4,8 @@
 import { useState, useEffect } from 'react';
 import type { ModelService } from '../lib/api/models';
 import { listRepoGgufs } from '../lib/api/hf';
+import { useApi } from '../lib/api';
+import { runLocalModel } from '../native/inference';
 
 interface ModelsPageProps {
   modelService: ModelService;
@@ -25,6 +27,9 @@ export function ModelsPage({ modelService }: ModelsPageProps) {
   const [cancelIds, setCancelIds] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<Record<string, { downloadedBytes: number; sizeBytes: number; status: string; filename?: string }>>({});
   const [error, setError] = useState('');
+  const [bench, setBench] = useState<Record<string, string>>({});
+  const [benching, setBenching] = useState<string | null>(null);
+  const { nativeFiles } = useApi();
   const [catalogue, setCatalogue] = useState<Array<{ id: string; author: string; modelName: string; modelType?: string; siblings?: Array<{ filename: string; size: number }> }>>([]);
   const [loadingCatalogue, setLoadingCatalogue] = useState(false);
 
@@ -208,8 +213,27 @@ function typeLabel(t?: string): string {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleBenchmark(downloadId: string, path: string) {
+    if (!nativeFiles || benching) return;
+    setBenching(downloadId);
     setError('');
+    try {
+      const started = Date.now();
+      const res = await runLocalModel(nativeFiles, path, 'Say hello in one short sentence.');
+      const secs = Math.max(0.1, (Date.now() - started) / 1000);
+      const toks = Math.max(1, Math.round(res.text.length / 4));
+      setBench((prev) => ({
+        ...prev,
+        [downloadId]: `${(toks / secs).toFixed(1)} tok/s${res.simulated ? ' (browser-sim)' : ' (on-device)'}`,
+      }));
+    } catch (e) {
+      setError(`Benchmark failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBenching(null);
+    }
+  }
+
+  async function handleDelete(id: string) {    setError('');
     try {
       await modelService.deleteDownloadedModel(id);
       setDownloads((prev) => prev.filter((d) => d.id !== id));
@@ -460,9 +484,19 @@ function typeLabel(t?: string): string {
                   </div>
                   <div className="meta">
                     Repo: {d.repo} | Size: {formatGb(d.sizeBytes)} GB | Rec RAM: {d.recRamGb} GB
+                    {bench[d.id] && <> | Bench: <b>{bench[d.id]}</b></>}
                   </div>
                 </div>
                 <button className="btn" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => handleDelete(d.id)}>Delete</button>
+                <button
+                  className="btn"
+                  style={{ padding: '4px 8px', fontSize: 12 }}
+                  onClick={() => handleBenchmark(d.id, d.path)}
+                  disabled={!!benching}
+                  data-testid={`bench-${d.id}`}
+                >
+                  {benching === d.id ? '…' : 'Bench'}
+                </button>
               </div>
               {(() => {
                 const prog = progressMap[d.id];

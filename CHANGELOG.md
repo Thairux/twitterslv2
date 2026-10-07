@@ -4,6 +4,27 @@ All notable changes, newest first. Each version ships a signed release APK
 under `releases/<version>/` and on the
 [GitHub Releases page](https://github.com/Thairux/twitterslv2/releases).
 
+## [3.0.0] — Alive Island
+- Strict-default inference: failing providers post nothing (diagnostics
+  instead of pool fill); shared client builder; Validate inference with
+  8 states; aggressive 429 backoff + cooldowns; local GGUF chain (opt-in);
+  fallback counters in Settings.
+- Provider overhaul: v19 profiles (chat/image/caption/local, auth shapes,
+  budgets, model cache), per-persona routing, failover chain,
+  auto-migration, dedicated `/providers` route, sans-secrets
+  import/export.
+- Real personas: founder relationship graph + states + sleep windows,
+  context blurbs in prompts, relationship-voiced DMs, memory count.
+- Living island: 24h stories + views, SVG identity set, arrival
+  ceremonies, model-written Gazette, grouped notifications.
+- Social depth: DM reactions/quote-reply/thread search, bookmark folders,
+  pins + labels, branded share PNGs, own-post analytics, OG badges.
+- Platform: sim console (beat/pause/spawn/events), prompt log, persona
+  debugger, reply-as-persona, backup import (smart merge), storage
+  manager, model benchmark, full a11y, pull-to-refresh + paging.
+- Release: v18 reply audience + muted scopes/expiry, onboarding
+  auto-route, Chatter media river, verified vB icon. Schema v22.
+
 ## [2.1.0] — Icon, docs, ambient honesty
 - TSL neobrutalist app icon (black + purple `#tsl` plate + yellow/purple
   shadows): `resources/icons/` masters, all Android mipmap densities, web

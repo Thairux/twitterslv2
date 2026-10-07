@@ -18,7 +18,8 @@ export function ChatterPage({ socialStore }: ChatterPageProps) {
     async function load() {
       try {
         const feed = await socialStore.rankFeed('user');
-        setPosts(feed);
+        // Media river: only posts carrying images — earns the route.
+        setPosts(feed.filter((p) => p.imagePath || p.imageUrl));
         try {
           const personas = await store.listPersonas();
           setNames(new Map(personas.map((p) => [p.id, p.displayName])));
@@ -37,11 +38,12 @@ export function ChatterPage({ socialStore }: ChatterPageProps) {
   return (
     <div className="content-area">
       <h2 className="page-title">Chatter</h2>
+      <p className="meta" style={{ marginBottom: 8 }}>The island's media river — posts with images only.</p>
       {loading && <p className="meta">Loading…</p>}
       {posts.map((p) => (
         <PostCard key={p.id} post={p} authorName={p.authorId === 'user' ? undefined : (names.get(p.authorId) ?? p.authorId)} />
       ))}
-      {posts.length === 0 && !loading && <p className="meta">No chatter yet.</p>}
+      {posts.length === 0 && !loading && <p className="meta">No media yet.</p>}
     </div>
   );
 }

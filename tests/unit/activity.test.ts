@@ -16,6 +16,12 @@ function makeStore() {
     async listPersonas() { return personas; },
     async listReplies() { return replies; },
     async createReply(r: Reply) { replies.push(r); },
+    async getAgentConfig(key: string) { return { key, value: 'hybrid' }; },
+    async listRelationships(): Promise<never[]> { return []; },
+    async getPersonaState(): Promise<Record<string, unknown>> { return {}; },
+    async query(): Promise<never[]> { return []; },
+    async getPost() { return null; },
+    async listFollowing(): Promise<string[]> { return []; },
   };
 }
 

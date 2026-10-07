@@ -2,6 +2,28 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApi } from '../lib/api';
 import { PostCard } from '../components/PostCard';
+import { PersonaAvatar } from '../components/PersonaAvatar';
+import type { Store } from '../lib/api/store';
+
+function BadgeMark({ personaId, store }: { personaId: string; store: Store }) {
+  const [badge, setBadge] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const b = await store.getPersonaBadge(personaId).catch(() => null);
+        if (!cancelled) setBadge(b);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [store, personaId]);
+  if (!badge) return null;
+  return <span style={{ color: 'var(--accent)' }} title={`Badge: ${badge}`}> ✓</span>;
+}
 import type { Post } from '../lib/domain/post';
 
 export function PersonaPage() {
@@ -13,6 +35,7 @@ export function PersonaPage() {
     displayName: string;
     bio: string;
     affinity: number;
+    avatarSeed: string;
   } | null>(null);
   const [following, setFollowing] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -36,6 +59,7 @@ export function PersonaPage() {
         displayName: p.displayName,
         bio: p.bio,
         affinity: p.affinity,
+        avatarSeed: p.avatarSeed || p.id,
       });
       setFollowing(await store.isFollowing(p.id));
       setMuted(await store.isMuted(p.id));
@@ -142,11 +166,12 @@ export function PersonaPage() {
   return (
     <div className="content-area">
       <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-        <div className="avatar" style={{ width: 64, height: 64, background: 'var(--accent)', color: 'var(--bg)', fontSize: 28 }}>
-          {persona.displayName[0]}
-        </div>
+        <PersonaAvatar seed={persona.avatarSeed} displayName={persona.displayName} size={64} />
         <div>
-          <h2 style={{ margin: 0 }}>{persona.displayName}</h2>
+          <h2 style={{ margin: 0 }}>
+            {persona.displayName}
+            <BadgeMark personaId={persona.id} store={store} />
+          </h2>
           <p className="meta">@{persona.handle}</p>
           <p style={{ margin: '4px 0 0', fontSize: 14 }}>{persona.bio}</p>
         </div>

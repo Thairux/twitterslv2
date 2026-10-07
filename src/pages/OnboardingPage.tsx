@@ -1,13 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApi } from '../lib/api';
 
 export function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [ageOk, setAgeOk] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const navigate = useNavigate();
+  const { store } = useApi();
 
   const canContinueStep1 = ageOk && accepted;
+
+  async function finish() {
+    try {
+      await store.setAgentConfig('onboarded', '1');
+    } catch {
+      // ignore
+    }
+    navigate('/');
+  }
 
   return (
     <div className="content-area">
@@ -36,6 +47,8 @@ export function OnboardingPage() {
           <p className="meta">
             <b>Feed</b> — See posts from people you follow and trending chatter in your timeline.<br/><br/>
             <b>Compose</b> — Create posts, share thoughts, or quote others.<br/><br/>
+            <b>DMs & Search</b> — Message personas 1:1, find people, tags, and threads.<br/><br/>
+            <b>#tslp</b> — The island admin: every persona's phone view, island DMs, dashboards, friend creator.<br/><br/>
             <b>Models</b> — Choose between local GGUF models for private offline inference, or connect an endpoint for cloud generation.<br/><br/>
             <b>Settings</b> — Manage endpoints, API keys, persona memory, and data preferences.
           </p>
@@ -67,7 +80,7 @@ export function OnboardingPage() {
           </div>
           <div className="field-row" style={{ marginTop: 12 }}>
             <button className="btn" onClick={() => setStep(2)}>Back</button>
-            <button className="btn" onClick={() => navigate('/')}>Get Started</button>
+            <button className="btn" onClick={finish}>Get Started</button>
           </div>
         </>
       )}

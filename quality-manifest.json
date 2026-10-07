@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
+  "version": "3.0.0",
   "loop1": {
     "iterations": 30,
     "output": "twitterslv2 docs/improvements.md",
@@ -23,7 +23,7 @@
   },
   "release": {
     "dir": "releases",
-    "currentVersion": "2.1.0"
+    "currentVersion": "3.0.0"
   },
   "domains": [],
   "invariants": [

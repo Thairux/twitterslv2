@@ -21,6 +21,11 @@ export function ProfilePage() {
   const [tab, setTab] = useState<'posts' | 'bookmarks' | 'following' | 'followers' | 'media'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [bookmarkPosts, setBookmarkPosts] = useState<Post[]>([]);
+  const [bookmarkIds, setBookmarkIds] = useState<Record<string, string>>({});
+  const [folders, setFolders] = useState<Array<{ id: string; name: string }>>([]);
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [folderOf, setFolderOf] = useState<Record<string, string>>({});
+  const [newFolder, setNewFolder] = useState('');
   const [followingCount, setFollowingCount] = useState(0);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingList, setFollowingList] = useState<Array<{ id: string; handle: string; displayName: string; bio: string }>>([]);
@@ -61,6 +66,18 @@ export function ProfilePage() {
         const bm = await store.listBookmarks('user');
         const posts = await Promise.all(bm.map((b: Bookmark) => store.getPost(b.postId)));
         setBookmarkPosts(posts.filter((p): p is Post => p != null));
+        setBookmarkIds(Object.fromEntries(bm.map((b) => [b.postId, b.id])));
+        try {
+          setFolders(await store.listBookmarkFolders());
+          const mapping: Record<string, string> = {};
+          for (const b of bm) {
+            const f = await store.getBookmarkFolder(b.id).catch(() => null);
+            if (f) mapping[b.postId] = f;
+          }
+          setFolderOf(mapping);
+        } catch {
+          // ignore
+        }
         await refreshRelations();
       } catch (err) {
         console.error('Failed to load profile:', err);
@@ -255,8 +272,77 @@ export function ProfilePage() {
         </div>
       )}
 
-      {tab === 'bookmarks' && bookmarkPosts.map((post) => (
-        <PostCard key={post.id} post={post} poll={bookmarkPolls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={bookmarkVotes[post.id]} />
+      {tab === 'bookmarks' && (
+        <div style={{ marginBottom: 8 }}>
+          <div className="field-row" style={{ marginBottom: 4 }}>
+            <button className={activeFolder === null ? 'active' : ''} onClick={() => setActiveFolder(null)} data-testid="folder-all">All</button>
+            {folders.map((f) => (
+              <button key={f.id} className={activeFolder === f.id ? 'active' : ''} onClick={() => setActiveFolder(f.id)} data-testid={`folder-${f.id}`}>
+                {f.name}
+              </button>
+            ))}
+          </div>
+          <div className="field-row">
+            <input
+              type="text"
+              value={newFolder}
+              onChange={(e) => setNewFolder(e.target.value)}
+              placeholder="New folder…"
+              maxLength={40}
+              className="input-field"
+              data-testid="folder-input"
+            />
+            <button
+              className="btn"
+              disabled={!newFolder.trim()}
+              onClick={async () => {
+                try {
+                  const id = await store.createBookmarkFolder(newFolder.trim());
+                  setFolders((prev) => [...prev, { id, name: newFolder.trim() }]);
+                  setNewFolder('');
+                } catch (err) {
+                  console.error('Folder create failed:', err);
+                }
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+      {tab === 'bookmarks' && bookmarkPosts.filter((post) => !activeFolder || folderOf[post.id] === activeFolder).map((post) => (
+        <div key={post.id}>
+          <PostCard post={post} poll={bookmarkPolls.get(post.id)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={bookmarkVotes[post.id]} />
+          {folders.length > 0 && (
+            <select
+              value={folderOf[post.id] ?? ''}
+              onChange={async (e) => {
+                try {
+                  const bid = bookmarkIds[post.id];
+                  if (!bid) return;
+                  await store.setBookmarkFolder(bid, e.target.value || null);
+                  setFolderOf((prev) => {
+                    const next = { ...prev };
+                    if (e.target.value) next[post.id] = e.target.value;
+                    else delete next[post.id];
+                    return next;
+                  });
+                } catch (err) {
+                  console.error('Folder assign failed:', err);
+                }
+              }}
+              className="input-field"
+              style={{ fontSize: 11, marginTop: 2 }}
+              aria-label="Bookmark folder"
+              data-testid={`folder-select-${post.id}`}
+            >
+              <option value="">No folder</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
       ))}
 
       {tab === 'posts' && posts.length === 0 && (

@@ -18,6 +18,7 @@ export function ThreadPage() {
   const [replying, setReplying] = useState(false);
   const [replyParent, setReplyParent] = useState<{ id: string; name: string } | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [daily, setDaily] = useState<{ views: Record<string, number>; likes: Record<string, number> } | null>(null);
   const [newestFirst, setNewestFirst] = useState(false);
 
   async function reloadThread() {
@@ -48,6 +49,13 @@ export function ThreadPage() {
           setNames(new Map(personas.map((p) => [p.id, p.displayName])));
         } catch {
           // names stay empty; author ids render as fallback
+        }
+        if (thread.post && thread.post.authorId === 'user') {
+          try {
+            setDaily(await store.getPostDailyStats(thread.post.id));
+          } catch {
+            // stats are decorative
+          }
         }
         try {
           await store.recordPostView(id);
@@ -134,6 +142,24 @@ export function ThreadPage() {
     <div className="content-area">
       {post && (
         <PostCard post={post} poll={polls.get(post.id)} authorName={post.authorId === 'user' ? undefined : (names.get(post.authorId) ?? post.authorId)} onQuote={handleQuote} onVote={async (optionId) => { try { await store.votePoll(optionId); } catch (err) { console.error('Vote failed:', err); } }} voted={pollVotes[post.id]} />
+      )}
+      {post && post.replyControl && post.replyControl !== 'everyone' && (
+        <p className="meta" data-testid="reply-gate" style={{ marginLeft: 24 }}>
+          Replies limited to {post.replyControl === 'followed' ? 'people the author follows' : 'mentioned accounts'} · friend always allowed
+        </p>
+      )}
+      {post && post.authorId === 'user' && daily && (
+        <div className="post" style={{ marginBottom: 8 }} data-testid="own-stats">
+          <div style={{ fontWeight: 'bold', fontSize: 12 }}>Your post analytics</div>
+          <div className="meta">
+            {Object.keys({ ...daily.views, ...daily.likes }).sort().slice(-7).map((day) => (
+              <span key={day} style={{ marginRight: 8 }}>
+                {day.slice(5)}: 👁{daily.views[day] ?? 0} ♥{daily.likes[day] ?? 0}
+              </span>
+            ))}
+            {Object.keys(daily.views).length === 0 && Object.keys(daily.likes).length === 0 && 'No engagement yet.'}
+          </div>
+        </div>
       )}
       <div className="thread-line" style={{ margin: '0 0 0 24px', minHeight: 24 }} />
       <div className="field-row" style={{ marginLeft: 24, marginBottom: 12 }}>

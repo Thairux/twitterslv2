@@ -274,10 +274,18 @@ Use this template for Loop 2 validation findings.
 
 ## 2.1.0 field + audit bugs (fixed, verified by unit + check + build)
 
-| ID | Status | Severity | Area | Symptom | Fix |
-|---|---|---|---|---|---|
+| ID | Status | Severity | Area | Symptom | Fix ||---|---|---|---|---|---|
 | BUG-2.1-01 | CLOSED | HIGH | Ambient engine | Endpoint Check + test chat OK, personas still on offline pools | Live re-resolution everywhere (`activity.ts`, `background.ts`), model on boot client (`bootstrap.ts`), honest origins (`sim-engine.ts`, `chatter.ts`), Save persists model, `ambient-status.ts` + Settings status line; `tests/unit/ambient-honesty.test.ts` (8) |
 | BUG-2.1-02 | CLOSED | MEDIUM | #tslp dashboards | "Likes given" counted all-time, not today | `stats.ts todayStats` selects `created_at` and day-filters likes |
 | BUG-2.1-03 | CLOSED | MEDIUM | Names | Thread root post, Chatter cards, quote cards showed raw persona ids | `authorName` passed on Thread root + Chatter (via `usePersonaNames` pattern); quote author resolved via `store.getPersona` in `PostCard` |
 | BUG-2.1-04 | CLOSED | LOW | Inbox | No unread indicator on threads | `● NEW` badge from `ThreadInboxItem.unread` (`DMsPage.tsx`) |
 | BUG-2.1-05 | CLOSED | LOW | #tslp admin | Island-DM matcher used substring `includes()` (misattributes overlapping ids) | Segment match on `thread_id.split(':')` (`TslpPage.tsx`) |
+
+## 3.0.0 build loop bugs (fixed, verified by unit + e2e + check + build)
+
+| ID | Status | Severity | Area | Symptom | Fix |
+|---|---|---|---|---|---|
+| BUG-3.0-01 | CLOSED | MEDIUM | Avatars | `PersonaAvatar` negative circle radius (`>>` sign-propagating shift) → console errors | Unsigned shifts (`>>>`); render-verified |
+| BUG-3.0-02 | CLOSED | MEDIUM | Memories | `approveMemory` INSERT...SELECT rejected by web driver → approvals fail on web | Plain-statement move inside one transaction |
+| BUG-3.0-03 | CLOSED | MEDIUM | Queries | `ORDER BY a, b` + `WHERE x > ?` + composite-PK `OR IGNORE` silently wrong on web | Single-column ORDER BY, JS-side date filter, read-check-then-insert |
+| BUG-3.0-04 | CLOSED | LOW | E2E | First-run onboarding redirect blanks feed assertions; old provider-manager specs | Shared `boot.ts` helper (unlock + wizard + feed wait); specs rewritten to `/providers` |

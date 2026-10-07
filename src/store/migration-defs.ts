@@ -6,7 +6,7 @@
 
 import { splitStatements } from '../lib/domain/sql';
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 22;
 
 export interface Migration {
   version: number;
@@ -258,5 +258,30 @@ export const MIGRATIONS: Migration[] = [
     version: 17,
     name: 'add-notification-reads',
     sql: splitStatements(`CREATE TABLE IF NOT EXISTS notification_reads (id TEXT PRIMARY KEY, read_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 18,
+    name: 'add-reply-control-muted-scopes',
+    sql: splitStatements(`ALTER TABLE posts ADD COLUMN reply_control TEXT NOT NULL DEFAULT 'everyone'; CREATE TABLE IF NOT EXISTS muted_word_rules (word TEXT PRIMARY KEY, surfaces TEXT NOT NULL DEFAULT '["timeline","notifications","replies"]', expires_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 19,
+    name: 'add-provider-profiles',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS provider_profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'chat', endpoint TEXT NOT NULL DEFAULT '', auth_type TEXT NOT NULL DEFAULT 'bearer', auth_header TEXT NOT NULL DEFAULT '', model TEXT, options_json TEXT NOT NULL DEFAULT '{}', priority INTEGER NOT NULL DEFAULT 0, budget_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL DEFAULT (datetime('now'))); CREATE TABLE IF NOT EXISTS persona_providers (persona_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))); CREATE TABLE IF NOT EXISTS provider_models_cache (profile_id TEXT PRIMARY KEY, models_json TEXT NOT NULL DEFAULT '[]', fetched_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 20,
+    name: 'add-relationships-persona-state',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS relationships (a_id TEXT NOT NULL, b_id TEXT NOT NULL, rel TEXT NOT NULL DEFAULT 'KNOWS', weight REAL NOT NULL DEFAULT 0.5, updated_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (a_id, b_id)); CREATE TABLE IF NOT EXISTS persona_state (persona_id TEXT PRIMARY KEY, state_json TEXT NOT NULL DEFAULT '{}', updated_at TEXT NOT NULL DEFAULT (datetime('now')));`),
+  },
+  {
+    version: 21,
+    name: 'add-stories',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS stories (id TEXT PRIMARY KEY, author_id TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', image_path TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')), expires_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS story_views (story_id TEXT NOT NULL, viewer_id TEXT NOT NULL, viewed_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (story_id, viewer_id)); CREATE INDEX IF NOT EXISTS idx_stories_author ON stories (author_id, expires_at);`),
+  },
+  {
+    version: 22,
+    name: 'add-social-depth',
+    sql: splitStatements(`CREATE TABLE IF NOT EXISTS dm_reactions (dm_id TEXT NOT NULL, persona_id TEXT NOT NULL, emoji TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (dm_id, persona_id)); ALTER TABLE dms ADD COLUMN reply_to_id TEXT; CREATE TABLE IF NOT EXISTS bookmark_folders (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))); CREATE TABLE IF NOT EXISTS bookmark_folder_items (folder_id TEXT NOT NULL, bookmark_id TEXT NOT NULL, PRIMARY KEY (folder_id, bookmark_id)); CREATE TABLE IF NOT EXISTS pinned_threads (thread_id TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT (datetime('now'))); CREATE TABLE IF NOT EXISTS persona_badges (persona_id TEXT PRIMARY KEY, badge TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')));`),
   },
 ];

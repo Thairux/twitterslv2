@@ -11,6 +11,7 @@ import { Secrets } from './secrets';
 import { ModelClient, normalizeEndpoint } from './model-client';
 import { ModelService } from './models';
 import { SeedService } from './seed';
+import { migrateProvidersToProfiles } from './providers';
 
 export async function bootstrap() {
   const nativeDb = await openDatabase('twittersl');
@@ -43,6 +44,11 @@ export async function bootstrap() {
     captionEndpoint: captionEndpoint || undefined,
   });
   const modelService = new ModelService(store, nativeFiles.default ?? nativeFiles, client);
-  await new SeedService(store).seedIfEmpty();
-  return { store, socialStore, dmStore, secrets, modelService, client, nativeFiles: nativeFiles.default ?? nativeFiles };
+  const firstSeed = await new SeedService(store).seedIfEmpty();
+  try {
+    await migrateProvidersToProfiles(store, secrets);
+  } catch {
+    // provider migration is best-effort; legacy rows keep working
+  }
+  return { store, socialStore, dmStore, secrets, modelService, client, nativeFiles: nativeFiles.default ?? nativeFiles, firstSeed };
 }

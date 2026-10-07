@@ -1,7 +1,7 @@
 // API: secrets — delegates to src/native/secrets.ts (Sprint 2).
 // Never log or persist secrets elsewhere (rule 07).
 
-import { getModelEndpoint as _getModelEndpoint, setModelEndpoint as _setModelEndpoint, getApiKey as _getApiKey, setApiKey as _setApiKey, clearApiKey as _clearApiKey, getImageGenEndpoint as _getImageGenEndpoint, setImageGenEndpoint as _setImageGenEndpoint, getCaptionEndpoint as _getCaptionEndpoint, setCaptionEndpoint as _setCaptionEndpoint, getSelectedModel as _getSelectedModel, setSelectedModel as _setSelectedModel, getSelectedImageModel as _getSelectedImageModel, setSelectedImageModel as _setSelectedImageModel, getSelectedCaptionModel as _getSelectedCaptionModel, setSelectedCaptionModel as _setSelectedCaptionModel, getProviderEndpoint as _getProviderEndpoint, setProviderEndpoint as _setProviderEndpoint, getProviderApiKey as _getProviderApiKey, setProviderApiKey as _setProviderApiKey, clearProviderSecrets as _clearProviderSecrets } from '@/native/secrets';
+import { getModelEndpoint as _getModelEndpoint, setModelEndpoint as _setModelEndpoint, getApiKey as _getApiKey, setApiKey as _setApiKey, clearApiKey as _clearApiKey, getImageGenEndpoint as _getImageGenEndpoint, setImageGenEndpoint as _setImageGenEndpoint, getCaptionEndpoint as _getCaptionEndpoint, setCaptionEndpoint as _setCaptionEndpoint, getSelectedModel as _getSelectedModel, setSelectedModel as _setSelectedModel, getSelectedImageModel as _getSelectedImageModel, setSelectedImageModel as _setSelectedImageModel, getSelectedCaptionModel as _getSelectedCaptionModel, setSelectedCaptionModel as _setSelectedCaptionModel, getProviderEndpoint as _getProviderEndpoint, setProviderEndpoint as _setProviderEndpoint, getProviderApiKey as _getProviderApiKey, setProviderApiKey as _setProviderApiKey, clearProviderSecrets as _clearProviderSecrets, getProfileApiKey as _getProfileApiKey, setProfileApiKey as _setProfileApiKey, clearProfileSecrets as _clearProfileSecrets } from '@/native/secrets';
 
 export class Secrets {
   async getEndpoint(): Promise<string | null> {
@@ -82,5 +82,17 @@ export class Secrets {
 
   async clearProviderSecrets(id: string): Promise<void> {
     await _clearProviderSecrets(id);
+  }
+
+  async getProfileApiKey(id: string): Promise<string | null> {
+    return _getProfileApiKey(id);
+  }
+
+  async setProfileApiKey(id: string, key: string): Promise<void> {
+    await _setProfileApiKey(id, key);
+  }
+
+  async clearProfileSecrets(id: string): Promise<void> {
+    await _clearProfileSecrets(id);
   }
 }

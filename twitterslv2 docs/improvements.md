@@ -194,3 +194,15 @@ Use this template for Loop 1 critique findings.
 | IMP-2.1-02 | CLOSED | MEDIUM | Docs | #tslp spec (`twitterslv2 docs/features/tslp-admin.md`), full inventory (`twitterslv2 docs/features/app-features.md`), validated gaps (`twitterslv2 docs/inprogress/tslp-gaps.md`), sprint I, CHANGELOG 2.0.0 + 2.1.0 |
 | IMP-2.1-03 | CLOSED | MEDIUM | #tslp entry | Discoverability: Me-page `#tslp` entry card (`profile-tslp-entry`) alongside Settings link; tabbar unchanged by design |
 | IMP-2.1-04 | CLOSED | LOW | #tslp detail | Removed dead `likes: 0` stub field from detail post rows |
+
+## 3.0.0 Alive Island cycle (all accepted items implemented)
+
+| ID | Status | Severity | Area | Resolution |
+|---|---|---|---|---|
+| IMP-3.0-01 | CLOSED | HIGH | Inference | Strict-default policy, shared client builder, real validation step, aggressive cooldown, local chain, counters; `inference-policy.ts`, 10 tests |
+| IMP-3.0-02 | CLOSED | HIGH | Providers | v19 profiles (4 kinds, auth shapes, budgets, model cache), per-persona routing, failover chain, auto-migration, `/providers` route, import/export; 7 tests |
+| IMP-3.0-03 | CLOSED | HIGH | Personas | Founder graph + states + sleep, context blurbs in prompts, relationship-voiced DMs, memory count in #tslp; 5 tests |
+| IMP-3.0-04 | CLOSED | HIGH | Island | Stories + views, SVG identity set, arrival ceremonies, model Gazette, grouped notifications; 3 tests |
+| IMP-3.0-05 | CLOSED | MEDIUM | Social | DM reactions/quote-reply/thread search, folders/pins/labels, share PNGs, own-post stats, OG badges; 4 tests |
+| IMP-3.0-06 | CLOSED | MEDIUM | Platform | Sim console, prompt log, debugger, reply-as, backup import, storage manager, benchmark, a11y pack, feed pull+paging; 4 tests |
+| IMP-3.0-07 | CLOSED | MEDIUM | Release | v18 reply audience + scopes UI, onboarding auto-route, Chatter river, vB icon verified; 4 tests |

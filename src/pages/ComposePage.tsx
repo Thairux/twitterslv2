@@ -9,11 +9,12 @@ import { respondToPost } from '../lib/api/activity';
 import { generateImage } from '../lib/api/image';
 
 export function ComposePage() {
-  const { store, socialStore, nativeFiles, client } = useApi();
+  const { store, socialStore, nativeFiles, client, secrets } = useApi();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const quoteId = searchParams.get('quote');
   const editId = searchParams.get('edit');
+  const storyMode = searchParams.get('story') === '1';
 
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
@@ -23,6 +24,7 @@ export function ComposePage() {
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
+  const [replyControl, setReplyControl] = useState<'everyone' | 'followed' | 'mentioned'>('everyone');
   const [draftRestored, setDraftRestored] = useState(false);
   const previewUrl = useBlobUrl(nativeFiles, imagePath || undefined);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -42,7 +44,7 @@ export function ComposePage() {
             setBody(post.body);
           }
         }
-        if (!quoteId && !editId) {
+        if (!quoteId && !editId && !storyMode) {
           const draft = await store.getDraft('compose-main');
           if (draft?.body) {
             setBody(draft.body);
@@ -54,17 +56,17 @@ export function ComposePage() {
       }
     }
     load();
-  }, [store, quoteId, editId]);
+  }, [store, quoteId, editId, storyMode]);
 
-  // Autosave draft (new posts only) — survives killed composer.
+  // Autosave draft (new posts only — not quotes, edits, or moments).
   useEffect(() => {
-    if (quoteId || editId) return;
+    if (quoteId || editId || storyMode) return;
     if (!body.trim()) return;
     const timer = setTimeout(() => {
       store.saveDraft('compose-main', body).catch(() => {});
     }, 1000);
     return () => clearTimeout(timer);
-  }, [store, body, quoteId, editId]);
+  }, [store, body, quoteId, editId, storyMode]);
 
   async function discardDraft() {
     try {
@@ -119,6 +121,18 @@ export function ComposePage() {
     if (!trimmed || saving) return;
     setSaving(true);
     try {
+      if (storyMode) {
+        // 24h expiring moment — never a feed post, never a draft.
+        await store.createStory({
+          id: `st-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          authorId: 'user',
+          body: trimmed.slice(0, MAX_POST_LEN),
+          imagePath: imagePath ?? undefined,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+        navigate('/');
+        return;
+      }
       if (editPost) {
         await store.updatePost(editPost.id, {
           body: trimmed.slice(0, MAX_POST_LEN),
@@ -142,6 +156,7 @@ export function ComposePage() {
         aiGenerated: false,
         imagePath: imagePath ?? undefined,
         imageUrl: /^https?:\/\//.test(cleanImageUrl) ? cleanImageUrl : undefined,
+        replyControl: storyMode ? undefined : replyControl,
       });
       const validOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
       if (pollQuestion.trim() && validOptions.length >= 2) {
@@ -153,7 +168,7 @@ export function ComposePage() {
       }
 
       // Friend-first replies + likes land within seconds (persisted, staggered).
-      respondToPost(socialStore, store, client, id, trimmed);
+      respondToPost(socialStore, store, client, id, trimmed, undefined, secrets);
       try {
         await store.deleteDraft('compose-main');
       } catch {
@@ -174,7 +189,7 @@ export function ComposePage() {
 
   return (
     <div className="content-area">
-      <h2 className="page-title">{editPost ? 'Edit Post' : quotePost ? 'Quote Post' : 'Compose'}</h2>
+      <h2 className="page-title">{editPost ? 'Edit Post' : quotePost ? 'Quote Post' : storyMode ? 'Moment (24h)' : 'Compose'}</h2>
       {quotePost && (
         <div className="post" style={{ marginBottom: 12, opacity: 0.8 }}>
           <div className="post-body">{quotePost.body}</div>
@@ -242,6 +257,22 @@ export function ComposePage() {
         </div>
       ))}
       <button className="btn" onClick={addOption} style={{ marginBottom: 12 }}>Add option</button>
+      {!quoteId && !editId && !storyMode && (
+        <div className="field-row" style={{ marginBottom: 8 }}>
+          <span className="meta">Who can reply:</span>
+          {(['everyone', 'followed', 'mentioned'] as const).map((r) => (
+            <button
+              key={r}
+              className="btn"
+              style={{ fontSize: 10, padding: '2px 8px', ...(replyControl === r ? { background: 'var(--accent)', color: 'var(--bg)' } : {}) }}
+              onClick={() => setReplyControl(r)}
+              data-testid={`audience-${r}`}
+            >
+              {r === 'everyone' ? 'Everyone' : r === 'followed' ? 'Followed' : 'Mentioned'}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="field-row">
         <button className="btn" onClick={handleSubmit} disabled={saving || !body.trim()}>
           {saving ? 'Saving…' : (editPost ? 'Update' : 'Post')}

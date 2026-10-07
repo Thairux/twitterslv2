@@ -20,6 +20,8 @@ export interface Dm {
   senderId: string;
   body: string;
   imagePath?: string;
+  /** Optional quoted message this DM replies to (v22). */
+  replyToId?: string;
   createdAt: string;
   origin: 'glimmer' | 'offline';
 }
@@ -155,6 +157,7 @@ const PostSchema = z.object({
   reposts: z.number(),
   origin: z.enum(['glimmer', 'offline']),
   aiGenerated: z.boolean().optional(),
+  replyControl: z.enum(['everyone', 'followed', 'mentioned']).optional(),
 });
 
 const ReplySchema = z.object({
@@ -196,6 +199,7 @@ const DmSchema = z.object({
   senderId: z.string(),
   body: z.string(),
   imagePath: z.string().optional(),
+  replyToId: z.string().optional(),
   createdAt: z.string(),
   origin: z.enum(['glimmer', 'offline']),
 });
@@ -467,6 +471,31 @@ export class Store {
     return counts;
   }
 
+  /** Per-day views + likes for one post (own-post analytics strip). */
+  async getPostDailyStats(postId: string): Promise<{ views: Record<string, number>; likes: Record<string, number> }> {
+    const views: Record<string, number> = {};
+    const likes: Record<string, number> = {};
+    try {
+      const vrows = await this.query<{ viewed_at: string }>('SELECT viewed_at FROM post_views WHERE post_id = ?', [postId]);
+      for (const r of vrows) {
+        const day = (r.viewed_at || '').slice(0, 10);
+        if (day) views[day] = (views[day] ?? 0) + 1;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const lrows = await this.query<{ created_at: string }>("SELECT created_at FROM reactions WHERE post_id = ? AND kind = 'like'", [postId]);
+      for (const r of lrows) {
+        const day = (r.created_at || '').slice(0, 10);
+        if (day) likes[day] = (likes[day] ?? 0) + 1;
+      }
+    } catch {
+      // ignore
+    }
+    return { views, likes };
+  }
+
   // Notification read state
   async markNotificationRead(id: string): Promise<void> {
     await this.db.run('INSERT OR REPLACE INTO notification_reads (id, read_at) VALUES (?, ?)', [id, new Date().toISOString()]);
@@ -517,6 +546,26 @@ export class Store {
     const rows = await this.query<{ word: string }>('SELECT word FROM muted_words');
     return rows.map((r) => r.word);
   }
+
+  /** Active rules for a surface (timeline|notifications|replies); prunes expired. */
+  async listActiveMutedWords(surface: string, now = new Date().toISOString()): Promise<string[]> {
+    // Web-driver rule: no comparison operators — prune expired in JS.
+    try {
+      const all = await this.query<{ word: string; expires_at: string | null }>('SELECT word, expires_at FROM muted_word_rules');
+      for (const r of all) {
+        if (r.expires_at && r.expires_at <= now) {
+          await this.db.run('DELETE FROM muted_word_rules WHERE word = ?', [r.word]).catch(() => {});
+        }
+      }
+    } catch {
+      // ignore
+    }
+    const rules = await this.listMutedWordRules().catch(() => []);
+    const active = rules.filter((r) => r.surfaces.includes(surface) && (!r.expiresAt || r.expiresAt > now));
+    if (active.length > 0) return active.map((r) => r.word);
+    // Fall back to the legacy global list until migrated.
+    return this.listMutedWords().catch(() => []);
+  }
   async report(targetType: string, targetId: string, reason: string): Promise<void> {
     Schemas.Report.parse({ id: `r-${Date.now()}-${Math.floor(Math.random() * 1e6)}`, targetType, targetId, reason, createdAt: new Date().toISOString() });
     await this.db.run('INSERT INTO reports (id, target_type, target_id, reason, created_at) VALUES (?, ?, ?, ?, ?)', [`r-${Date.now()}-${Math.floor(Math.random() * 1e6)}`, targetType, targetId, reason, new Date().toISOString()]);
@@ -526,8 +575,8 @@ export class Store {
   async createPost(post: Post): Promise<void> {
     const validated = Schemas.Post.parse(post);
     await this.db.run(
-      `INSERT INTO posts (id, author_id, body, image_path, image_prompt, image_url, quoted_post_id, edited, created_at, likes, reposts, origin, ai_generated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [validated.id, validated.authorId, validated.body, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.imageUrl ?? null, validated.quotedPostId ?? null, validated.edited ? 1 : 0, validated.createdAt, validated.likes, validated.reposts, validated.origin, validated.aiGenerated ? 1 : 0],
+      `INSERT INTO posts (id, author_id, body, image_path, image_prompt, image_url, quoted_post_id, edited, reply_control, created_at, likes, reposts, origin, ai_generated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [validated.id, validated.authorId, validated.body, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.imageUrl ?? null, validated.quotedPostId ?? null, validated.edited ? 1 : 0, validated.replyControl ?? 'everyone', validated.createdAt, validated.likes, validated.reposts, validated.origin, validated.aiGenerated ? 1 : 0],
     );
   }
   mapPostRow(row: any): Post {
@@ -540,6 +589,7 @@ export class Store {
       imageUrl: row.image_url ?? undefined,
       quotedPostId: row.quoted_post_id ?? undefined,
       edited: row.edited === 1,
+      replyControl: row.reply_control === 'followed' || row.reply_control === 'mentioned' ? row.reply_control : 'everyone',
       createdAt: row.created_at,
       likes: row.likes ?? 0,
       reposts: row.reposts ?? 0,
@@ -566,8 +616,8 @@ export class Store {
     const next = { ...existing, ...patch };
     const validated = Schemas.Post.parse(next);
     await this.db.run(
-      `UPDATE posts SET body = ?, edited = ?, image_path = ?, image_prompt = ?, image_url = ?, quoted_post_id = ? WHERE id = ?`,
-      [validated.body, validated.edited ? 1 : 0, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.imageUrl ?? null, validated.quotedPostId ?? null, id],
+      `UPDATE posts SET body = ?, edited = ?, image_path = ?, image_prompt = ?, image_url = ?, quoted_post_id = ?, reply_control = ? WHERE id = ?`,
+      [validated.body, validated.edited ? 1 : 0, validated.imagePath ?? null, validated.imagePrompt ?? null, validated.imageUrl ?? null, validated.quotedPostId ?? null, validated.replyControl ?? existing.replyControl ?? 'everyone', id],
     );
   }
   async deletePost(id: string): Promise<void> {
@@ -723,8 +773,12 @@ export class Store {
   async approveMemory(pendingId: string): Promise<void> {
     const id = `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const now = new Date().toISOString();
+    // Web-safe: the fallback driver rejects INSERT...SELECT, so move the
+    // row with plain statements inside one transaction instead.
+    const pending = await this.selectOne<any>('SELECT persona_id, fact FROM pending_memories WHERE id = ?', [pendingId]);
+    if (!pending) return;
     await this.db.transaction(async (tx) => {
-      tx.execute('INSERT INTO memories (id, persona_id, fact, embedding_ref, consented, created_at) SELECT ?, persona_id, fact, NULL, 1, ? FROM pending_memories WHERE id = ?', [id, now, pendingId]);
+      tx.execute('INSERT INTO memories (id, persona_id, fact, embedding_ref, consented, created_at) VALUES (?, ?, ?, NULL, 1, ?)', [id, pending.persona_id, pending.fact, now]);
       tx.execute('DELETE FROM pending_memories WHERE id = ?', [pendingId]);
     });
   }
@@ -872,7 +926,7 @@ export class Store {
   // DMs
   async createDm(dm: Dm): Promise<void> {
     const validated = Schemas.Dm.parse(dm);
-    await this.db.run('INSERT INTO dms (id, thread_id, sender_id, body, image_path, created_at, origin) VALUES (?, ?, ?, ?, ?, ?, ?)', [validated.id, validated.threadId, validated.senderId, validated.body, validated.imagePath ?? null, validated.createdAt, validated.origin]);
+    await this.db.run('INSERT INTO dms (id, thread_id, sender_id, body, image_path, reply_to_id, created_at, origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [validated.id, validated.threadId, validated.senderId, validated.body, validated.imagePath ?? null, validated.replyToId ?? null, validated.createdAt, validated.origin]);
   }
   async listDms(threadId: string): Promise<Dm[]> {
     const rows = await this.query<any>('SELECT * FROM dms WHERE thread_id = ? ORDER BY created_at ASC', [threadId]);
@@ -882,6 +936,7 @@ export class Store {
       senderId: r.sender_id,
       body: r.body,
       imagePath: r.image_path ?? undefined,
+      replyToId: r.reply_to_id ?? undefined,
       createdAt: r.created_at,
       origin: r.origin,
     }));
@@ -915,5 +970,205 @@ export class Store {
       startsAt: row.starts_at,
       endsAt: row.ends_at,
     };
+  }
+
+  // Provider profiles (v19 OpenCode-style overhaul)
+  async listProviderProfiles(kind?: string): Promise<Array<{ id: string; name: string; kind: string; endpoint: string; authType: string; authHeader: string; model?: string; optionsJson: string; priority: number; budgetJson: string; createdAt: string }>> {
+    const rows = await this.query<any>(
+      kind ? 'SELECT * FROM provider_profiles WHERE kind = ? ORDER BY priority ASC' : 'SELECT * FROM provider_profiles ORDER BY priority ASC',
+      kind ? [kind] : [],
+    );
+    return rows.map((r) => ({
+      id: r.id, name: r.name, kind: r.kind, endpoint: r.endpoint ?? '', authType: r.auth_type ?? 'bearer',
+      authHeader: r.auth_header ?? '', model: r.model ?? undefined, optionsJson: r.options_json ?? '{}',
+      priority: r.priority ?? 0, budgetJson: r.budget_json ?? '{}', createdAt: r.created_at,
+    }));
+  }
+
+  async upsertProviderProfile(p: { id: string; name: string; kind: string; endpoint?: string; authType?: string; authHeader?: string; model?: string; optionsJson?: string; priority?: number; budgetJson?: string }): Promise<void> {
+    const now = new Date().toISOString();
+    const existing = await this.selectOne<{ id: string }>('SELECT id FROM provider_profiles WHERE id = ?', [p.id]);
+    if (existing) {
+      await this.db.run('UPDATE provider_profiles SET name = ?, kind = ?, endpoint = ?, auth_type = ?, auth_header = ?, model = ?, options_json = ?, priority = ?, budget_json = ? WHERE id = ?',
+        [p.name, p.kind, p.endpoint ?? '', p.authType ?? 'bearer', p.authHeader ?? '', p.model ?? null, p.optionsJson ?? '{}', p.priority ?? 0, p.budgetJson ?? '{}', p.id]);
+    } else {
+      await this.db.run('INSERT INTO provider_profiles (id, name, kind, endpoint, auth_type, auth_header, model, options_json, priority, budget_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [p.id, p.name, p.kind, p.endpoint ?? '', p.authType ?? 'bearer', p.authHeader ?? '', p.model ?? null, p.optionsJson ?? '{}', p.priority ?? 0, p.budgetJson ?? '{}', now]);
+    }
+  }
+
+  async deleteProviderProfile(id: string): Promise<void> {
+    await this.db.run('DELETE FROM persona_providers WHERE profile_id = ?', [id]);
+    await this.db.run('DELETE FROM provider_models_cache WHERE profile_id = ?', [id]);
+    await this.db.run('DELETE FROM provider_profiles WHERE id = ?', [id]);
+  }
+
+  async getPersonaProvider(personaId: string): Promise<string | null> {
+    const row = await this.selectOne<{ profile_id: string }>('SELECT profile_id FROM persona_providers WHERE persona_id = ?', [personaId]);
+    return row?.profile_id ?? null;
+  }
+
+  async setPersonaProvider(personaId: string, profileId: string | null): Promise<void> {
+    if (!profileId) {
+      await this.db.run('DELETE FROM persona_providers WHERE persona_id = ?', [personaId]);
+      return;
+    }
+    await this.db.run('INSERT OR REPLACE INTO persona_providers (persona_id, profile_id, created_at) VALUES (?, ?, ?)', [personaId, profileId, new Date().toISOString()]);
+  }
+
+  async getProviderModelsCache(profileId: string): Promise<{ modelsJson: string; fetchedAt: string } | null> {
+    const row = await this.selectOne<any>('SELECT models_json, fetched_at FROM provider_models_cache WHERE profile_id = ?', [profileId]);
+    return row ? { modelsJson: row.models_json ?? '[]', fetchedAt: row.fetched_at } : null;
+  }
+
+  async setProviderModelsCache(profileId: string, modelsJson: string): Promise<void> {
+    await this.db.run('INSERT OR REPLACE INTO provider_models_cache (profile_id, models_json, fetched_at) VALUES (?, ?, ?)', [profileId, modelsJson, new Date().toISOString()]);
+  }
+
+  // Relationships + persona state (v20)
+  async listRelationships(): Promise<Array<{ aId: string; bId: string; rel: string; weight: number }>> {
+    const rows = await this.query<any>('SELECT a_id, b_id, rel, weight FROM relationships');
+    return rows.map((r) => ({ aId: r.a_id, bId: r.b_id, rel: r.rel, weight: r.weight ?? 0.5 }));
+  }
+
+  async setRelationship(aId: string, bId: string, rel: string, weight = 0.5): Promise<void> {
+    await this.db.run('INSERT OR REPLACE INTO relationships (a_id, b_id, rel, weight, updated_at) VALUES (?, ?, ?, ?, ?)', [aId, bId, rel, weight, new Date().toISOString()]);
+  }
+
+  async getPersonaState(personaId: string): Promise<Record<string, unknown>> {
+    try {
+      const row = await this.selectOne<{ state_json: string }>('SELECT state_json FROM persona_state WHERE persona_id = ?', [personaId]);
+      if (!row?.state_json) return {};
+      return JSON.parse(row.state_json) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+
+  async setPersonaState(personaId: string, state: Record<string, unknown>): Promise<void> {
+    await this.db.run('INSERT OR REPLACE INTO persona_state (persona_id, state_json, updated_at) VALUES (?, ?, ?)', [personaId, JSON.stringify(state), new Date().toISOString()]);
+  }
+
+  // Stories (v21)
+  async createStory(s: { id: string; authorId: string; body: string; imagePath?: string; expiresAt: string }): Promise<void> {
+    await this.db.run('INSERT INTO stories (id, author_id, body, image_path, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [s.id, s.authorId, s.body, s.imagePath ?? null, new Date().toISOString(), s.expiresAt]);
+  }
+
+  async listActiveStories(now = new Date().toISOString()): Promise<Array<{ id: string; authorId: string; body: string; imagePath?: string; createdAt: string; expiresAt: string }>> {
+    // Web-driver rule: no comparison operators in WHERE — filter in JS.
+    const rows = await this.query<any>('SELECT * FROM stories ORDER BY created_at DESC');
+    return rows
+      .filter((r) => (r.expires_at ?? '') > now)
+      .map((r) => ({ id: r.id, authorId: r.author_id, body: r.body ?? '', imagePath: r.image_path ?? undefined, createdAt: r.created_at, expiresAt: r.expires_at }));
+  }
+
+  async markStoryViewed(storyId: string, viewerId: string): Promise<void> {
+    // Idempotent by read-check: the web fallback honors OR IGNORE only
+    // for single-column PKs, and story_views has a composite PK.
+    const existing = await this.selectOne<{ story_id: string }>(
+      'SELECT story_id FROM story_views WHERE story_id = ? AND viewer_id = ?',
+      [storyId, viewerId],
+    ).catch(() => null);
+    if (existing) return;
+    await this.db.run('INSERT INTO story_views (story_id, viewer_id, viewed_at) VALUES (?, ?, ?)', [storyId, viewerId, new Date().toISOString()]);
+  }
+
+  async listStoryViews(storyId: string): Promise<string[]> {
+    const rows = await this.query<{ viewer_id: string }>('SELECT viewer_id FROM story_views WHERE story_id = ?', [storyId]);
+    return rows.map((r) => r.viewer_id);
+  }
+
+  // DM reactions + folders + pins + badges (v22)
+  async toggleDmReaction(dmId: string, personaId: string, emoji: string): Promise<boolean> {
+    const existing = await this.selectOne<any>('SELECT emoji FROM dm_reactions WHERE dm_id = ? AND persona_id = ?', [dmId, personaId]);
+    if (existing) {
+      await this.db.run('DELETE FROM dm_reactions WHERE dm_id = ? AND persona_id = ?', [dmId, personaId]);
+      return false;
+    }
+    await this.db.run('INSERT INTO dm_reactions (dm_id, persona_id, emoji, created_at) VALUES (?, ?, ?, ?)', [dmId, personaId, emoji, new Date().toISOString()]);
+    return true;
+  }
+
+  async listDmReactions(dmIds: string[]): Promise<Array<{ dmId: string; personaId: string; emoji: string }>> {
+    if (dmIds.length === 0) return [];
+    const placeholders = dmIds.map(() => '?').join(',');
+    const rows = await this.query<any>(`SELECT dm_id, persona_id, emoji FROM dm_reactions WHERE dm_id IN (${placeholders})`, dmIds);
+    return rows.map((r) => ({ dmId: r.dm_id, personaId: r.persona_id, emoji: r.emoji }));
+  }
+
+  async listBookmarkFolders(): Promise<Array<{ id: string; name: string }>> {
+    const rows = await this.query<any>('SELECT id, name FROM bookmark_folders ORDER BY created_at ASC');
+    return rows.map((r) => ({ id: r.id, name: r.name }));
+  }
+
+  async createBookmarkFolder(name: string): Promise<string> {
+    const id = `bf-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    await this.db.run('INSERT INTO bookmark_folders (id, name, created_at) VALUES (?, ?, ?)', [id, name.slice(0, 40), new Date().toISOString()]);
+    return id;
+  }
+
+  async getBookmarkFolder(bookmarkId: string): Promise<string | null> {
+    const row = await this.selectOne<{ folder_id: string }>('SELECT folder_id FROM bookmark_folder_items WHERE bookmark_id = ?', [bookmarkId]);
+    return row?.folder_id ?? null;
+  }
+
+  async setBookmarkFolder(bookmarkId: string, folderId: string | null): Promise<void> {
+    await this.db.run('DELETE FROM bookmark_folder_items WHERE bookmark_id = ?', [bookmarkId]);
+    if (folderId) {
+      await this.db.run('INSERT OR IGNORE INTO bookmark_folder_items (folder_id, bookmark_id) VALUES (?, ?)', [folderId, bookmarkId]);
+    }
+  }
+
+  async listPinnedThreads(): Promise<string[]> {
+    const rows = await this.query<{ thread_id: string }>('SELECT thread_id FROM pinned_threads');
+    return rows.map((r) => r.thread_id);
+  }
+
+  async togglePinThread(threadId: string): Promise<boolean> {
+    const existing = await this.selectOne<{ thread_id: string }>('SELECT thread_id FROM pinned_threads WHERE thread_id = ?', [threadId]);
+    if (existing) {
+      await this.db.run('DELETE FROM pinned_threads WHERE thread_id = ?', [threadId]);
+      return false;
+    }
+    await this.db.run('INSERT INTO pinned_threads (thread_id, created_at) VALUES (?, ?)', [threadId, new Date().toISOString()]);
+    return true;
+  }
+
+  async getPersonaBadge(personaId: string): Promise<string | null> {
+    const row = await this.selectOne<{ badge: string }>('SELECT badge FROM persona_badges WHERE persona_id = ?', [personaId]);
+    return row?.badge ?? null;
+  }
+
+  async setPersonaBadge(personaId: string, badge: string | null): Promise<void> {
+    if (!badge) {
+      await this.db.run('DELETE FROM persona_badges WHERE persona_id = ?', [personaId]);
+      return;
+    }
+    await this.db.run('INSERT OR REPLACE INTO persona_badges (persona_id, badge, created_at) VALUES (?, ?, ?)', [personaId, badge, new Date().toISOString()]);
+  }
+
+  // Muted-word rules with surfaces + expiry (v18; replaces global list)
+  async listMutedWordRules(): Promise<Array<{ word: string; surfaces: string[]; expiresAt: string | null }>> {
+    const rows = await this.query<any>('SELECT word, surfaces, expires_at FROM muted_word_rules');
+    return rows.map((r) => {
+      let surfaces: string[] = ['timeline', 'notifications', 'replies'];
+      try {
+        const parsed: unknown = JSON.parse(r.surfaces ?? '[]');
+        if (Array.isArray(parsed)) surfaces = parsed.filter((s): s is string => typeof s === 'string');
+      } catch {
+        // keep defaults
+      }
+      return { word: r.word, surfaces, expiresAt: r.expires_at ?? null };
+    });
+  }
+
+  async upsertMutedWordRule(word: string, surfaces: string[], expiresAt: string | null): Promise<void> {
+    await this.db.run('INSERT OR REPLACE INTO muted_word_rules (word, surfaces, expires_at, created_at) VALUES (?, ?, ?, ?)',
+      [word.toLowerCase(), JSON.stringify(surfaces), expiresAt, new Date().toISOString()]);
+  }
+
+  async removeMutedWordRule(word: string): Promise<void> {
+    await this.db.run('DELETE FROM muted_word_rules WHERE word = ?', [word.toLowerCase()]);
   }
 }

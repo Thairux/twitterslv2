@@ -33,4 +33,28 @@ export function getAmbientStatus(): AmbientStatus {
 
 export function resetAmbientStatus(): void {
   status = { live: false, lastError: null, lastWhere: null, at: null };
+  promptLog.length = 0;
+}
+
+export interface PromptRecord {
+  at: string;
+  where: string;
+  preview: string;
+}
+
+/** Last-30 prompt ring buffer for the #tslp transparency tab. */
+const promptLog: PromptRecord[] = [];
+
+export function notePrompt(where: string, messages: Array<{ role: string; content: string }>): void {
+  try {
+    const last = messages[messages.length - 1]?.content ?? '';
+    promptLog.push({ at: new Date().toISOString(), where, preview: last.slice(0, 160) });
+    while (promptLog.length > 30) promptLog.shift();
+  } catch {
+    // never break generation for diagnostics
+  }
+}
+
+export function getPromptLog(): PromptRecord[] {
+  return [...promptLog].reverse();
 }

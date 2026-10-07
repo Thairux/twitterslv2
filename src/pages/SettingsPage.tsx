@@ -4,12 +4,25 @@ import type { Store } from '../lib/api/store';
 import type { Secrets } from '../lib/api/secrets';
 import type { FilesAdapter } from '../native/files';
 import { useApi } from '../lib/api';
-import { ProviderManager, ModelKindPicker } from '../components/ProviderSettings';
 import { ModelClient, normalizeEndpoint } from '../lib/api/model-client';
-import { getAmbientStatus, type AmbientStatus } from '../lib/api/ambient-status';
+import {
+  getAmbientStatus,
+  type AmbientStatus,
+} from '../lib/api/ambient-status';
+import {
+  getInferencePolicy,
+  ambientLocalEnabled,
+  validateInference,
+  isCooled,
+  cooldownUntil,
+  getFallbackCounters,
+  type InferencePolicyMode,
+  type InferenceState,
+} from '../lib/api/inference-policy';
 import { runLocalModel } from '../native/inference';
 import { onResumeTick } from '../lib/background';
-import { exportAllData } from '../lib/api/export';
+import { exportAllData, importBackup } from '../lib/api/export';
+import { storageBreakdown, pruneOrphanedBlobs } from '../lib/api/storage-man';
 import { lastOpenBackend } from '../native/db';
 
 interface SettingsPageProps {
@@ -82,8 +95,10 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
-  const [mutedWords, setMutedWords] = useState<string[]>([]);
   const [newWord, setNewWord] = useState('');
+  const [mutedRules, setMutedRules] = useState<Array<{ word: string; surfaces: string[]; expiresAt: string | null }>>([]);
+  const [newWordSurfaces, setNewWordSurfaces] = useState<string[]>(['timeline', 'notifications', 'replies']);
+  const [newWordExpiry, setNewWordExpiry] = useState('never');
   const [protectedPosts, setProtectedPosts] = useState(false);
   const [simLog, setSimLog] = useState('');
 
@@ -96,16 +111,26 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState('');
   const [ambient, setAmbient] = useState<AmbientStatus>(() => getAmbientStatus());
+  const [policy, setPolicy] = useState<InferencePolicyMode>('strict');
+  const [ambientLocal, setAmbientLocal] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validation, setValidation] = useState('');
+  const [cooldowns, setCooldowns] = useState<Array<{ key: string; count: number }>>([]);
   const [runningLocal, setRunningLocal] = useState(false);
   const autoDiscoveredFor = useRef<string | null>(null);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [importResult, setImportResult] = useState('');
+  const [storageInfo, setStorageInfo] = useState('');
+  const [fontScale, setFontScale] = useState('100');
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [haptics, setHaptics] = useState(true);
   const { client: liveApiClient } = useApi();
 
   async function runSimTick(kind: 'ping' | 'spawn') {
     setSimLog(kind === 'ping' ? 'Running friend ping...' : 'Running weekly spawn...');
     try {
-      await onResumeTick(store, liveApiClient);
+      await onResumeTick(store, liveApiClient, secrets);
       const personas = await store.listPersonas();
       setSimLog(
         kind === 'ping'
@@ -141,9 +166,49 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
         const cfg = await store.getAgentConfig('memory_consent');
         setConsent(cfg?.value === '1');
         const words = await store.listMutedWords();
-        setMutedWords(words);
+        // One-time migration: legacy global words → all-surface rules.
+        try {
+          const migrated = await store.getAgentConfig('muted_migrated_v18');
+          const existing = await store.listMutedWordRules().catch(() => []);
+          if (!migrated && words.length > 0 && existing.length === 0) {
+            for (const w of words) {
+              await store.upsertMutedWordRule(w, ['timeline', 'notifications', 'replies'], null).catch(() => {});
+            }
+            await store.setAgentConfig('muted_migrated_v18', new Date().toISOString()).catch(() => {});
+          }
+          setMutedRules(await store.listMutedWordRules().catch(() => []));
+        } catch {
+          // ignore
+        }
         const privacy = await store.getAgentConfig('protected_posts');
         setProtectedPosts(privacy?.value === '1');
+        try {
+          const fs = await store.getAgentConfig('font_scale');
+          if (fs) {
+            setFontScale(fs.value);
+            applyA11y(fs.value, reduceMotion);
+          }
+          const rm = await store.getAgentConfig('reduce_motion');
+          if (rm?.value === '1') {
+            setReduceMotion(true);
+            applyA11y(fs?.value ?? fontScale, true);
+          }
+          const hap = await store.getAgentConfig('haptics');
+          if (hap?.value === '0') setHaptics(false);
+        } catch {
+          // a11y prefs are best-effort
+        }
+        try {
+          setPolicy(await getInferencePolicy(store));
+        } catch {
+          // default strict stands
+        }
+        try {
+          setAmbientLocal(await ambientLocalEnabled(store));
+        } catch {
+          // default off stands
+        }
+        setCooldowns(getFallbackCounters());
         if (modelService) {
           const local = await modelService.listLocalModels();
           setLocalModels(local);
@@ -216,6 +281,84 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint]);
+
+  async function addMutedRule() {
+    const word = newWord.trim().toLowerCase();
+    if (!word || newWordSurfaces.length === 0) return;
+    const expiresAt =
+      newWordExpiry === 'never'
+        ? null
+        : new Date(Date.now() + (newWordExpiry === '24h' ? 86400000 : newWordExpiry === '7d' ? 604800000 : 2592000000)).toISOString();
+    try {
+      await store.upsertMutedWordRule(word, newWordSurfaces, expiresAt);
+      setNewWord('');
+      setMutedRules(await store.listMutedWordRules().catch(() => []));
+    } catch (e) {
+      setError(`Mute add failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function removeMutedRule(word: string) {
+    try {
+      await store.removeMutedWordRule(word);
+      try {
+        await store.removeMutedWord(word);
+      } catch {
+        // legacy row may not exist
+      }
+      setMutedRules(await store.listMutedWordRules().catch(() => []));
+    } catch (e) {
+      setError(`Mute remove failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function handlePolicy(mode: InferencePolicyMode) {
+    setPolicy(mode);
+    try {
+      await store.setAgentConfig('inference_policy', mode);
+    } catch (e) {
+      setError(`Failed to save policy: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function handleAmbientLocal(on: boolean) {
+    setAmbientLocal(on);
+    try {
+      await store.setAgentConfig('ambient_local', on ? '1' : '0');
+    } catch (e) {
+      setError(`Failed to save local toggle: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  /** Real inference validation: minimal chat proving the full path. */
+  async function handleValidate() {
+    const chatClient = liveClient();
+    if (!chatClient) {
+      setError('Enter a Model Endpoint URL first.');
+      return;
+    }
+    const model = modelIdInput.trim() || selectedModel || undefined;
+    setValidating(true);
+    setError('');
+    setValidation('');
+    try {
+      await persistEndpoint();
+      const probed = new ModelClient(chatClient.chatEndpoint, chatClient.chatApiKey, model ? { defaultModel: model } : {});
+      const res = await validateInference(probed);
+      const state: InferenceState = res.state;
+      setValidation(
+        state === 'READY_LIVE'
+          ? `[READY_LIVE] inference OK in ${res.latencyMs}ms${res.model ? ` (model ${res.model})` : ''}`
+          : `[${state}] ${res.error ?? 'validation failed'} (${res.latencyMs}ms)`,
+      );
+      setCooldowns(getFallbackCounters());
+      setAmbient(getAmbientStatus());
+    } catch (e) {
+      setValidation(`[ERROR] ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setValidating(false);
+    }
+  }
 
   async function handleTestChat() {
     const chatClient = liveClient();
@@ -367,6 +510,86 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
     }
   }
 
+  async function handleImportFile(file: File) {
+    setError('');
+    setImportResult('');
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== 'object') throw new Error('Not a TSL backup file.');
+      const res = await importBackup(store, parsed as Record<string, unknown>);
+      const parts: string[] = [];
+      for (const [table, n] of Object.entries(res.added)) parts.push(`${table} +${n}`);
+      for (const [table, n] of Object.entries(res.skipped)) parts.push(`${table} skip ${n}`);
+      setImportResult(`[IMPORTED] ${parts.join(' · ') || 'nothing new'}`);
+    } catch (e) {
+      setError(`Import failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function refreshStorage() {
+    if (!nativeFiles) {
+      setStorageInfo('File storage unavailable.');
+      return;
+    }
+    try {
+      const info = await storageBreakdown(nativeFiles, store);
+      const cats = Object.entries(info.byPrefix).map(([k, v]) => `${k}: ${v}`).join(', ');
+      setStorageInfo(`${info.total} blobs (${cats || 'none'}) · ${info.orphaned.length} orphaned`);
+    } catch (e) {
+      setStorageInfo(`Storage check failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  async function handlePrune() {
+    if (!nativeFiles) return;
+    try {
+      const n = await pruneOrphanedBlobs(nativeFiles, store);
+      setStorageInfo(`Pruned ${n} orphaned blobs.`);
+      await refreshStorage();
+    } catch (e) {
+      setError(`Prune failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  function applyA11y(scale: string, motion: boolean) {
+    try {
+      const pct = Math.min(150, Math.max(80, parseInt(scale || '100', 10) || 100));
+      document.documentElement.style.setProperty('--font-scale', String(pct / 100));
+      document.documentElement.classList.toggle('reduce-motion', motion);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleFontScale(v: string) {
+    setFontScale(v);
+    applyA11y(v, reduceMotion);
+    try {
+      await store.setAgentConfig('font_scale', v);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleReduceMotion(on: boolean) {
+    setReduceMotion(on);
+    applyA11y(fontScale, on);
+    try {
+      await store.setAgentConfig('reduce_motion', on ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleHaptics(on: boolean) {
+    setHaptics(on);
+    try {
+      await store.setAgentConfig('haptics', on ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleReset() {
     try {
       const tables = await store.query<any>("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
@@ -514,8 +737,45 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       <p className="meta" data-testid="ambient-status" style={{ marginTop: 4 }}>
         Ambient engine: <b>{ambient.live ? 'LIVE via endpoint' : 'offline pools'}</b>
         {ambient.lastError ? ` (last fallback ${ambient.lastWhere ?? ''}: ${ambient.lastError})` : ''}
-        {' '}<button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setAmbient(getAmbientStatus())}>Refresh</button>
+        {' '}<button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => { setAmbient(getAmbientStatus()); setCooldowns(getFallbackCounters()); }}>Refresh</button>
       </p>
+      <div className="field-row" style={{ marginTop: 4 }}>
+        <span className="meta">Inference policy:</span>
+        {(['strict', 'hybrid', 'offline'] as InferencePolicyMode[]).map((m) => (
+          <button
+            key={m}
+            className="btn"
+            style={{ fontSize: 10, padding: '2px 8px', ...(policy === m ? { background: 'var(--accent)', color: 'var(--bg)' } : {}) }}
+            onClick={() => handlePolicy(m)}
+            data-testid={`policy-${m}`}
+          >
+            {m === 'strict' ? 'Strict' : m === 'hybrid' ? 'Hybrid' : 'Offline'}
+          </button>
+        ))}
+      </div>
+      <p className="help-text">
+        Strict (default): a failing provider posts nothing — diagnostics
+        instead of fake pool content. Hybrid: pools with offline origin.
+        Offline: pools by choice.
+      </p>
+      <label className="check-label" style={{ marginTop: 4 }}>
+        <input type="checkbox" checked={ambientLocal} onChange={(e) => handleAmbientLocal(e.target.checked)} data-testid="ambient-local-toggle" />
+        Ambient local fallback (downloaded GGUF when cloud fails)
+      </label>
+      <div className="field-row" style={{ marginTop: 4 }}>
+        <button className="btn" style={{ fontSize: 11, padding: '4px 8px' }} onClick={handleValidate} disabled={validating} data-testid="validate-btn">
+          {validating ? 'Validating…' : 'Validate inference'}
+        </button>
+      </div>
+      {validation && <p className="meta" data-testid="validation-result" style={{ marginTop: 4, wordBreak: 'break-word' }}>{validation}</p>}
+      {cooldowns.length > 0 && (
+        <p className="meta" style={{ marginTop: 4 }}>
+          Fallback causes: {cooldowns.slice(0, 5).map((c) => `${c.key} ×${c.count}`).join(' · ')}
+          {isCooled(normalizeEndpoint(endpoint)) && cooldownUntil(normalizeEndpoint(endpoint))
+            ? ` — cooling until ${new Date(cooldownUntil(normalizeEndpoint(endpoint)) as number).toLocaleTimeString()}`
+            : ''}
+        </p>
+      )}
 
       <div style={{ marginBottom: 12, marginTop: 12 }}>
         <label><b>Endpoint Models</b> <span className="meta">(auto-discovered{endpoint ? ` from ${endpoint}` : ''})</span>
@@ -560,19 +820,12 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Model Providers</h3>
       <p className="meta" style={{ marginBottom: 8 }}>
-        Each provider is its own template (name, kind, endpoint, key, model).
-        Credentials persist on this device across restarts. Activate one per
-        kind with <b>Use</b> — it loads into the matching slot above.
+        Providers moved to their own page: chain order, budgets, model
+        cache, per-persona routing, import/export.
       </p>
-      <ProviderManager store={store} secrets={secrets} />
-
-      <br/><br/>
-      <h3 style={{ marginBottom: 8 }}>Image Model</h3>
-      <ModelKindPicker kind="image" store={store} secrets={secrets} localModels={localModels} />
-
-      <br/><br/>
-      <h3 style={{ marginBottom: 8 }}>Caption Model</h3>
-      <ModelKindPicker kind="caption" store={store} secrets={secrets} localModels={localModels} />
+      <p className="meta" style={{ marginBottom: 8 }}>
+        Open the <Link to="/providers" className="btn" style={{ padding: '2px 8px', fontSize: 12 }} data-testid="settings-providers-link">Providers page</Link> to manage chat, image, caption, and local providers.
+      </p>
 
       <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Data</h3>
@@ -581,8 +834,28 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       </p>
       <div className="field-row" style={{ flexWrap: 'wrap', gap: 8 }}>
         <button className="btn" onClick={handleExport}>Export Data</button>
+        <label className="btn" style={{ cursor: 'pointer' }}>
+          Import Backup
+          <input
+            type="file"
+            accept="application/json"
+            style={{ display: 'none' }}
+            data-testid="import-input"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportFile(f);
+              e.target.value = '';
+            }}
+          />
+        </label>
         <button className="btn" onClick={() => setShowResetConfirm(true)}>Reset All Data</button>
       </div>
+      {importResult && <p className="meta" data-testid="import-result" style={{ marginTop: 4 }}>{importResult}</p>}
+      <div className="field-row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        <button className="btn" onClick={refreshStorage} data-testid="storage-refresh">Storage Info</button>
+        <button className="btn" onClick={handlePrune} data-testid="storage-prune">Prune Orphans</button>
+      </div>
+      {storageInfo && <p className="meta" data-testid="storage-info" style={{ marginTop: 4 }}>{storageInfo}</p>}
       {showResetConfirm && (
         <div style={{ marginTop: 8, padding: 8, border: '2px solid red', borderRadius: 4 }}>
           <p style={{ color: 'red' }}>This will permanently delete all posts, replies, DMs, bookmarks, personas, and settings. This cannot be undone.</p>
@@ -626,6 +899,33 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
       <span id="saveStatus" className="meta">{ok}</span>
 
       <br/><br/>
+      <h3 style={{ marginBottom: 8 }}>Accessibility</h3>
+      <label className="meta">Text size ({fontScale}%)</label>
+      <div className="field-row" style={{ marginTop: 4 }}>
+        <input
+          type="range"
+          min={80}
+          max={150}
+          step={5}
+          value={fontScale}
+          onChange={(e) => handleFontScale(e.target.value)}
+          className="input-field"
+          data-testid="a11y-font"
+          aria-label="Text size percent"
+        />
+      </div>
+      <label className="check-label" style={{ marginTop: 4 }}>
+        <input type="checkbox" checked={reduceMotion} onChange={(e) => handleReduceMotion(e.target.checked)} data-testid="a11y-motion" />
+        Reduce motion
+      </label>
+      <br/>
+      <label className="check-label">
+        <input type="checkbox" checked={haptics} onChange={(e) => handleHaptics(e.target.checked)} data-testid="a11y-haptics" />
+        Haptics (where supported)
+      </label>
+      <p className="meta">DMs can be read aloud from any chat via the speaker button — voices differ per persona role.</p>
+
+      <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Memory</h3>
       <p className="meta">Persona memory proposals are stored locally and require your approval before they become permanent.</p>
       <MemoryApproval store={store} />
@@ -640,6 +940,7 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
 
       <br/><br/>
       <h3 style={{ marginBottom: 8 }}>Muted Words</h3>
+      <p className="meta" style={{ marginBottom: 8 }}>Rules apply per surface and can expire. Legacy global words were migrated below.</p>
       <div className="field-row" style={{ marginBottom: 8 }}>
         <input
           type="text"
@@ -648,16 +949,34 @@ export function SettingsPage({ store, secrets, modelService, nativeFiles }: Sett
           placeholder="Add word to mute..."
           className="input-field"
         />
-        <button className="btn" data-testid="mute-add" onClick={async () => { if (!newWord.trim()) return; await store.addMutedWord(newWord.trim()); setNewWord(''); const words = await store.listMutedWords(); setMutedWords(words); }}>Add</button>
+        <button className="btn" data-testid="mute-add" onClick={addMutedRule}>Add</button>
+      </div>
+      <div className="field-row" style={{ marginBottom: 8 }}>
+        {(['timeline', 'notifications', 'replies'] as const).map((s) => (
+          <label key={s} className="check-label" style={{ fontSize: 11 }}>
+            <input
+              type="checkbox"
+              checked={newWordSurfaces.includes(s)}
+              onChange={() => setNewWordSurfaces((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))}
+            />
+            {s}
+          </label>
+        ))}
+        <select value={newWordExpiry} onChange={(e) => setNewWordExpiry(e.target.value)} className="input-field" style={{ flex: '0 0 auto' }} aria-label="Expiry">
+          <option value="never">Never expires</option>
+          <option value="24h">24 hours</option>
+          <option value="7d">7 days</option>
+          <option value="30d">30 days</option>
+        </select>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {mutedWords.map((w) => (
-          <div key={w} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{w}</span>
-            <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={async () => { await store.removeMutedWord(w); const words = await store.listMutedWords(); setMutedWords(words); }}>Remove</button>
+        {mutedRules.map((r) => (
+          <div key={r.word} className="post" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} data-testid={`mute-rule-${r.word}`}>
+            <span>{r.word} <span className="meta">({r.surfaces.join(', ')}{r.expiresAt ? ` · until ${r.expiresAt.slice(0, 10)}` : ''})</span></span>
+            <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => removeMutedRule(r.word)}>Remove</button>
           </div>
         ))}
-        {mutedWords.length === 0 && <p className="meta">No muted words.</p>}
+        {mutedRules.length === 0 && <p className="meta">No muted words.</p>}
       </div>
 
       <br/><br/>

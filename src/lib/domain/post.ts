@@ -15,6 +15,8 @@ export interface Post {
   reposts: number;
   origin: 'glimmer' | 'offline';
   aiGenerated?: boolean;
+  /** Who may reply: everyone | people the author follows | only mentioned. */
+  replyControl?: 'everyone' | 'followed' | 'mentioned';
 }
 
 export interface Reply {
@@ -50,6 +52,7 @@ export interface MakePostOpts {
   imagePrompt?: string;
   imageUrl?: string;
   quotedPostId?: string;
+  replyControl?: 'everyone' | 'followed' | 'mentioned';
 }
 
 export function makePost(authorId: string, body: string, opts: MakePostOpts = {}): Post {
@@ -67,6 +70,7 @@ export function makePost(authorId: string, body: string, opts: MakePostOpts = {}
     imagePrompt: opts.imagePrompt,
     imageUrl: opts.imageUrl,
     quotedPostId: opts.quotedPostId,
+    replyControl: opts.replyControl ?? 'everyone',
   };
 }
 

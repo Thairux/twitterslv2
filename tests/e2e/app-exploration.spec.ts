@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { attachErrorCollectors } from './console-filter';
+import { gotoFeed } from './boot';
 
 // App exploration: usability + bug hunt. Goal is to discover bugs and verify
 // ease of use — every screen must render something meaningful (never blank),
@@ -9,15 +10,6 @@ test.describe('App exploration (usability bug hunt)', () => {
   test('every hub renders, nothing clips, no JS errors', async ({ page }) => {
     test.setTimeout(180000);
     const { consoleErrors, pageErrors } = attachErrorCollectors(page);
-
-    async function unlockIfNeeded() {
-      const locked = await page.locator('.input-field[type="password"]').count();
-      if (locked > 0) {
-        await page.getByPlaceholder('Enter PIN to unlock.').fill('0000');
-        await page.getByRole('button', { name: 'Unlock' }).click();
-        await page.waitForTimeout(1000);
-      }
-    }
 
     async function expectNoHorizontalOverflow() {
       const overflow = await page.evaluate(() => {
@@ -38,10 +30,11 @@ test.describe('App exploration (usability bug hunt)', () => {
     }
 
     // 1. Feed boots with brand.
-    await page.goto('/');
-    await unlockIfNeeded();
+    await gotoFeed(page);
     await expect(page.locator('.logo')).toHaveText('TSL');
     // Feed shows posts or an explicit empty-state — never a blank page.
+    // Poll: fresh boots seed + migrate before first paint.
+    await expect(page.locator('.post, [data-testid="feed-empty"]').first()).toBeVisible({ timeout: 60000 });
     const feedPosts = await page.locator('.post').count();
     const feedEmpty = await page.locator('[data-testid="feed-empty"]').count();
     expect(feedPosts + feedEmpty, 'feed shows posts or empty-state guidance').toBeGreaterThan(0);
@@ -114,13 +107,12 @@ test.describe('App exploration (usability bug hunt)', () => {
     await page.waitForTimeout(500);
     await expect(page.locator('[data-testid="following-list"]')).toBeVisible();
 
-    // 4c. Providers section renders with add form + per-kind pickers.
-    await page.goto('/#/settings');
+    // 4c. Providers live on their own page with add form.
+    await page.goto('/#/providers');
     await page.waitForTimeout(800);
-    await expect(page.locator('[data-testid="provider-manager"]')).toBeVisible();
-    await expect(page.locator('[data-testid="provider-name-input"]')).toBeVisible();
-    await expect(page.locator('[data-testid="image-picker"]')).toBeVisible();
-    await expect(page.locator('[data-testid="caption-picker"]')).toBeVisible();
+    await expect(page.locator('[data-testid="providers-page"]')).toBeVisible();
+    await expect(page.locator('[data-testid="profile-name-input"]')).toBeVisible();
+    await expect(page.locator('[data-testid="persona-route"]')).toBeVisible();
 
     // 4b. Search is one tap away and suggests islanders to follow.
     await page.goto('/#/');

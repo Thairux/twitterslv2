@@ -11,7 +11,7 @@ export class SocialStore {
     const posts = await this.store.listPosts();
     const mutedPersonas = await this.store.listMutes();
     const blockedPersonas = await this.store.listBlocks();
-    const mutedWords = await this.store.listMutedWords();
+    const mutedWords = await this.store.listActiveMutedWords('timeline').catch(() => this.store.listMutedWords());
     const replyCounts: Record<string, number> = {};
     const allReplies = await this.store.listReplies();
     for (const r of allReplies) {
@@ -26,7 +26,7 @@ export class SocialStore {
   async listFeedFollowing(userId: string): Promise<Post[]> {
     const followingIds = await this.store.listFollowing();
     const mutedPersonas = await this.store.listMutes();
-    const mutedWords = await this.store.listMutedWords();
+    const mutedWords = await this.store.listActiveMutedWords('timeline').catch(() => this.store.listMutedWords());
     const blockedPersonas = await this.store.listBlocks();
     const allPosts = await this.store.listPosts();
     const muted = domainFilterMuted(allPosts, mutedPersonas, mutedWords);
@@ -37,13 +37,17 @@ export class SocialStore {
   async getThread(postId: string): Promise<{ post: Post | null; replies: Reply[] }> {
     const post = await this.store.getPost(postId);
     const replies = post ? await this.store.listReplies(postId) : [];
-    return { post: post ?? null, replies };
+    const words = await this.store.listActiveMutedWords('replies').catch(() => [] as string[]);
+    const filtered = words.length > 0
+      ? replies.filter((r) => !words.some((w) => r.body.toLowerCase().includes(w.toLowerCase())))
+      : replies;
+    return { post: post ?? null, replies: filtered };
   }
 
   async searchPosts(query: string, filters?: { authorId?: string }): Promise<Post[]> {
     const allPosts = await this.store.listPosts();
     const mutedPersonas = await this.store.listMutes();
-    const mutedWords = await this.store.listMutedWords();
+    const mutedWords = await this.store.listActiveMutedWords('timeline').catch(() => this.store.listMutedWords());
     const blockedPersonas = await this.store.listBlocks();
     let results = domainSearchPosts(allPosts, query);
     if (filters?.authorId) {

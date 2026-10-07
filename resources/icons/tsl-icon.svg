@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- TSL neobrutalist master icon: black field, purple #tsl plate,
-       yellow hard shadow + purple glow shadow overlapping. -->
+  <!-- TSL official icon vB: yellow plate, purple shadow, black #TSL. -->
   <rect width="512" height="512" fill="#000"/>
   <rect x="102" y="172" width="360" height="220" rx="28" fill="#7b2ff7" fill-opacity="0.55"/>
-  <rect x="90" y="160" width="360" height="220" rx="28" fill="#f5d90a"/>
-  <rect x="76" y="146" width="360" height="220" rx="28" fill="#7b2ff7" stroke="#000" stroke-width="8"/>
-  <text x="256" y="300" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="120" fill="#fff" text-anchor="middle">#tsl</text>
+  <rect x="90" y="160" width="360" height="220" rx="28" fill="#7b2ff7"/>
+  <rect x="76" y="146" width="360" height="220" rx="28" fill="#f5d90a" stroke="#000" stroke-width="8"/>
+  <text x="256" y="300" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="120" fill="#000" text-anchor="middle">#TSL</text>
 </svg>

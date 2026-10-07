@@ -109,3 +109,9 @@ Loop 3 regression findings for Sprint 7 SQMG gate.
 - Status: CLOSED (suite green: 124 unit + 7 e2e incl. new tslp/social specs)
 - Intentional behavior changes (spec updated first): WORLD_CAP 50?1500 (domain tests updated), persona post copy enriched (offline pools replaced), notifications now include likes/reposts/follows/quotes (was DMs+replies only), tab bar gained Search (was 4 tabs).
 - No silent ignores; deferred items live in release notes as approved LOWs.
+
+## 3.0.0 regression gate (2026-10-07)
+
+- Status: CLOSED (suite green: 173 unit + 8 e2e incl. new providers/boot specs)
+- Intentional behavior changes (spec updated first): strict-default inference (failing providers post nothing), onboarding auto-route on fresh installs (e2e boot helper added), Chatter is now a media river, Settings providers section moved to `/providers`, notification reactions grouped per post, reply-audience gating enforced on ambient.
+- E2E-found-then-fixed: avatar negative radius, onboarding-first-run blank-feed assertions, stale provider-manager specs — all updated to new behavior, no silent ignores.

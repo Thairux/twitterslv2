@@ -14,6 +14,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { DMsPage } from './pages/DMsPage';
 import { FriendPage } from './pages/FriendPage';
 import { ModelsPage } from './pages/ModelsPage';
+import { ProvidersPage } from './pages/ProvidersPage';
 import { TslpPage } from './pages/TslpPage';
 import { FriendRoute } from './pages/FriendRoute';
 import { SettingsPage } from './pages/SettingsPage';
@@ -78,6 +79,7 @@ function Shell({ data }: ShellProps) {
           <Route path="/dms" element={<DMsPage />} />
           <Route path="/messages/:id" element={<FriendPage />} />
           <Route path="/models" element={<ModelsPage modelService={modelService} />} />
+          <Route path="/providers" element={<ProvidersPage />} />
           <Route path="/tslp" element={<TslpPage />} />
           <Route path="/friend" element={<FriendRoute />} />
           <Route path="/settings" element={<SettingsPage store={store} secrets={secrets} modelService={modelService} client={client} nativeFiles={nativeFiles} />} />
@@ -120,13 +122,35 @@ export function App() {
         rotateDemoEvent(result.store).catch((err) => console.error('rotateDemoEvent failed:', err));
         (window as any).__tsl = { seedWorldEvent: async () => { try { await seedDemoEvent(result.store); } catch (err) { console.error('seedWorldEvent failed:', err); } }, lockApp: () => { setLocked(true); } };
         setData(result);
+        // First-run onboarding: fresh installs land on the wizard once.
+        // Upgrades (firstSeed false) are never rerouted.
+        try {
+          const done = await result.store.getAgentConfig('onboarded').catch(() => null);
+          if (result.firstSeed && done?.value !== '1' && !window.location.hash) {
+            window.location.hash = '#/onboarding';
+          }
+        } catch {
+          // ignore
+        }
         // Island heartbeat: personas post, reply, like, and DM on a timer
-        // so the timeline stays alive while the app is open.
-        const beat = () => {
-          ambientBeat(result.store, result.socialStore, result.client).catch(() => {});
-          randomDmBeat(result.store, result.dmStore, result.client).catch(() => {});
+        // so the timeline stays alive while the app is open. Interval and
+        // pause come from agent_config (Sim console), read every tick.
+        let lastBeat = 0;
+        const beat = async () => {
+          try {
+            if ((await result.store.getAgentConfig('island_paused').catch(() => null))?.value === '1') return;
+            const raw = parseInt((await result.store.getAgentConfig('heartbeat_ms').catch(() => null))?.value ?? '45000', 10);
+            const interval = Number.isFinite(raw) && raw >= 15000 ? raw : 45000;
+            const now = Date.now();
+            if (now - lastBeat < interval) return;
+            lastBeat = now;
+            ambientBeat(result.store, result.socialStore, result.client, undefined, result.secrets).catch(() => {});
+            randomDmBeat(result.store, result.dmStore, result.client, 0.35, result.secrets).catch(() => {});
+          } catch {
+            // heartbeat must never crash the app
+          }
         };
-        const timer = setInterval(beat, 45_000);
+        const timer = setInterval(beat, 15_000);
         const kickoff = setTimeout(beat, 8_000);
         (window as any).__tsl.cleanupHeartbeat = () => { clearInterval(timer); clearTimeout(kickoff); };
       } catch (err) {

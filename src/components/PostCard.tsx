@@ -7,6 +7,8 @@ import { useBlobUrl } from '../lib/api/use-blob-url';
 import { useNativeFiles, useApi } from '../lib/api';
 import { useEffect, useState } from 'react';
 import { extractOpenGraph } from '../lib/api/opengraph';
+import { PersonaAvatar } from './PersonaAvatar';
+import { downloadPostPNG } from '../lib/api/share-image';
 
 export interface PostCardProps {
   post: Post;
@@ -52,6 +54,8 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
   const [repostCount, setRepostCount] = useState(post.reposts);
   const [showLikers, setShowLikers] = useState(false);
   const [likers, setLikers] = useState<Array<{ id: string; displayName: string; handle: string }>>([]);
+  const [avatarSeed, setAvatarSeed] = useState<string>(post.authorId);
+  const [badge, setBadge] = useState<string | null>(null);
 
   async function toggleLikers() {
     if (!showLikers) {
@@ -107,26 +111,44 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
     return () => { cancelled = true; };
   }, [post.body, post.quotedPostId, store]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSeed() {
+      if (post.authorId === 'user') {
+        if (!cancelled) setAvatarSeed('user');
+        return;
+      }
+      try {
+        const persona = await store.getPersona(post.authorId);
+        if (!cancelled) setAvatarSeed(persona?.avatarSeed || post.authorId);
+      } catch {
+        if (!cancelled) setAvatarSeed(post.authorId);
+      }
+      try {
+        const b = await store.getPersonaBadge(post.authorId).catch(() => null);
+        if (!cancelled) setBadge(b);
+      } catch {
+        // ignore
+      }
+    }
+    loadSeed();
+    return () => { cancelled = true; };
+  }, [post.authorId, store]);
+
   return (
     <div className="post">
       <div className="post-header">
-        <div
-          className="avatar"
-          style={{
-            width: 24,
-            height: 24,
-            background: 'linear-gradient(135deg, var(--accent), var(--border))',
-            fontSize: 10,
-          }}
-        >
-          {name[0]}
-        </div>
+        <PersonaAvatar seed={avatarSeed} displayName={name} size={24} />
         <div>
           <span style={{ fontWeight: 'bold' }}>{name}</span>
+          {badge && <span style={{ color: 'var(--accent)' }} title={`Badge: ${badge}`}> ✓</span>}
           <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>
             {' '}{handle}{' '}
           </span>
           <span className="time">{timeLabel}</span>
+          {post.origin === 'offline' && (
+            <span className="meta" data-testid={`offline-${post.id}`} title="Made from the offline pool (no live model)"> · offline</span>
+          )}
           {post.aiGenerated && (
             <span style={{ color: 'var(--accent)' }} title="AI Generated">[*]</span>
           )}
@@ -279,6 +301,20 @@ export function PostCard({ post, poll, onQuote, onEdit, onVote, voted, replyCoun
         {onQuote && (
           <button className="btn" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => onQuote(post.id)}>Quote</button>
         )}
+        <button
+          className="btn"
+          style={{ fontSize: 10, padding: '2px 8px' }}
+          data-testid={`share-${post.id}`}
+          onClick={() => {
+            try {
+              downloadPostPNG({ body: post.body, authorName: name, timeLabel }, `tsl-post-${post.id}.png`);
+            } catch (err) {
+              console.error('Share failed:', err);
+            }
+          }}
+        >
+          Share
+        </button>
         <LikeButton postId={post.id} onChange={(liked) => setLikeCount((n) => n + (liked ? 1 : -1))} />
         <RepostButton postId={post.id} onChange={(reposted) => setRepostCount((n) => n + (reposted ? 1 : -1))} />
         <BookmarkButton postId={post.id} />

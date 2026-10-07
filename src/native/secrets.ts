@@ -13,6 +13,7 @@ const KEY_SELECTED_IMAGE_MODEL = `${WEB_NS}selected-image-model`;
 const KEY_SELECTED_CAPTION_MODEL = `${WEB_NS}selected-caption-model`;
 const providerEndpointKey = (id: string) => `${WEB_NS}provider-${id}-endpoint`;
 const providerApiKey = (id: string) => `${WEB_NS}provider-${id}-apikey`;
+const profileApiKey = (id: string) => `${WEB_NS}profile-${id}-apikey`;
 
 const WEB_SECRET = 'tsl-web-obfuscation-key';
 
@@ -243,6 +244,21 @@ export async function getProviderApiKey(id: string): Promise<string | null> {
 
 export async function setProviderApiKey(id: string, key: string): Promise<void> {
   await secureSet(providerApiKey(id), key);
+}
+
+/** Per-profile keys for the v19 provider-profile system (rule 07). */
+export async function getProfileApiKey(id: string): Promise<string | null> {
+  const fromSecure = await secureGet(profileApiKey(id));
+  if (fromSecure !== null) return fromSecure;
+  return prefGet(profileApiKey(id));
+}
+
+export async function setProfileApiKey(id: string, key: string): Promise<void> {
+  await secureSet(profileApiKey(id), key);
+}
+
+export async function clearProfileSecrets(id: string): Promise<void> {
+  await secureDel(profileApiKey(id));
 }
 
 export async function clearProviderSecrets(id: string): Promise<void> {

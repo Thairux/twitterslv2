@@ -42,24 +42,36 @@ export function NotificationsPage({ dmStore }: NotificationsPageProps) {
         } catch {
           // ignore
         }
-        // Likes and reposts on your posts.
+        // Likes and reposts on your posts — grouped per post.
         try {
           const mine = new Set((await store.listPosts('user')).map((p) => p.id));
           const reactions = await store.query<{ post_id: string; persona_id: string; kind: string }>(
             'SELECT post_id, persona_id, kind FROM reactions ORDER BY rowid DESC LIMIT 60',
           );
-          const shown = new Set<string>();
+          const groups = new Map<string, { kind: string; postId: string; who: string[]; seen: string[] }>();
           for (const r of reactions) {
             if (!mine.has(r.post_id) || r.persona_id === 'user') continue;
-            const key = `${r.kind}-${r.post_id}-${r.persona_id}`;
-            if (shown.has(key)) continue;
-            shown.add(key);
-            const id = `reaction-${key}`;
+            const key = `${r.kind}-${r.post_id}`;
+            let g = groups.get(key);
+            if (!g) {
+              g = { kind: r.kind, postId: r.post_id, who: [], seen: [] };
+              groups.set(key, g);
+            }
+            if (!g.seen.includes(r.persona_id)) {
+              g.seen.push(r.persona_id);
+              g.who.push(nameOf(r.persona_id));
+            }
+          }
+          for (const [key, g] of groups) {
+            const id = `reaction-group-${key}`;
+            const head = g.who[0] ?? 'Someone';
+            const rest = g.who.length > 1 ? ` + ${g.who.length - 1} other${g.who.length > 2 ? 's' : ''}` : '';
+            const verb = g.kind === 'like' ? 'liked' : 'reposted';
             items.push({
               id,
-              text: r.kind === 'like' ? `${nameOf(r.persona_id)} liked your post` : `${nameOf(r.persona_id)} reposted your post`,
+              text: `${head}${rest} ${verb} your post`,
               unread: !seen(id),
-              to: `/post/${r.post_id}`,
+              to: `/post/${g.postId}`,
             });
             if (items.length >= 30) break;
           }

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoFeed } from './boot';
 
 // Social heartbeat: posting from the UI must produce friend-first replies
 // and persona likes within seconds, with counts and liker lists updating.
@@ -13,13 +14,7 @@ test.describe('Social activity loop', () => {
       }
     });
 
-    await page.goto('/');
-    const locked = await page.locator('.input-field[type="password"]').count();
-    if (locked > 0) {
-      await page.getByPlaceholder('Enter PIN to unlock.').fill('0000');
-      await page.getByRole('button', { name: 'Unlock' }).click();
-      await page.waitForTimeout(1000);
-    }
+    await gotoFeed(page);
 
     const probe = `Heartbeat probe ${Date.now()}`;
     await page.goto('/#/compose');

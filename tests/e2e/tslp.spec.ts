@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { attachErrorCollectors } from './console-filter';
+import { gotoFeed } from './boot';
 
 // #tslp admin panel: grid, dashboards, friend creator, provider templates.
 test.describe('#tslp admin', () => {
@@ -7,13 +8,7 @@ test.describe('#tslp admin', () => {
     test.setTimeout(180000);
     const { consoleErrors, pageErrors } = attachErrorCollectors(page);
 
-    await page.goto('/');
-    const locked = await page.locator('.input-field[type="password"]').count();
-    if (locked > 0) {
-      await page.getByPlaceholder('Enter PIN to unlock.').fill('0000');
-      await page.getByRole('button', { name: 'Unlock' }).click();
-      await page.waitForTimeout(1000);
-    }
+    await gotoFeed(page);
 
     await page.goto('/#/tslp');
     await page.waitForTimeout(1500);
@@ -44,12 +39,12 @@ test.describe('#tslp admin', () => {
     await page.waitForTimeout(3000);
     await expect(page.locator('.status-bar h2').first()).not.toBeEmpty({ timeout: 15000 });
 
-    // Provider template add form is present.
-    await page.goto('/#/settings');
+    // Provider profiles live on their own page now.
+    await page.goto('/#/providers');
     await page.waitForTimeout(1000);
-    await expect(page.locator('[data-testid="provider-manager"]')).toBeVisible();
-    await page.getByTestId('provider-name-input').fill('E2E Provider');
-    await page.getByTestId('provider-add').click();
+    await expect(page.locator('[data-testid="providers-page"]')).toBeVisible();
+    await page.getByTestId('profile-name-input').fill('E2E Provider');
+    await page.getByTestId('profile-add').click();
     await page.waitForTimeout(1000);
     await expect(page.getByText('E2E Provider').first()).toBeVisible();
 

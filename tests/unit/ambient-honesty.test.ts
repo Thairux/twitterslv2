@@ -80,11 +80,14 @@ describe('sim-engine reply origins', () => {
 });
 
 describe('chatter origins', () => {
-  it('persona-to-persona DMs stay offline on failure, glimmer on success', async () => {
+  it('persona-to-persona DMs pool offline on failure under hybrid', async () => {
     const dms: Array<{ origin: string }> = [];
     const store = {
       async listPersonas() {
         return personaRows();
+      },
+      async getAgentConfig(key: string) {
+        return { key, value: 'hybrid' };
       },
       async createDm(dm: { origin: string }) {
         dms.push(dm);
@@ -93,8 +96,39 @@ describe('chatter origins', () => {
     await personaToPersonaDms(store as never, failingClient() as never);
     expect(dms).toHaveLength(2);
     expect(dms.every((d) => d.origin === 'offline')).toBe(true);
+  });
 
-    dms.length = 0;
+  it('persona-to-persona DMs skip pool fill on failure under strict', async () => {
+    const dms: Array<{ origin: string }> = [];
+    const store = {
+      async listPersonas() {
+        return personaRows();
+      },
+      async getAgentConfig(key: string) {
+        return { key, value: 'strict' };
+      },
+      async createDm(dm: { origin: string }) {
+        dms.push(dm);
+      },
+    };
+    await personaToPersonaDms(store as never, failingClient() as never);
+    expect(dms).toHaveLength(0);
+    expect(getAmbientStatus().lastError).toMatch(/401/);
+  });
+
+  it('persona-to-persona DMs are glimmer on success', async () => {
+    const dms: Array<{ origin: string }> = [];
+    const store = {
+      async listPersonas() {
+        return personaRows();
+      },
+      async getAgentConfig(key: string) {
+        return { key, value: 'strict' };
+      },
+      async createDm(dm: { origin: string }) {
+        dms.push(dm);
+      },
+    };
     await personaToPersonaDms(store as never, liveClient() as never);
     expect(dms).toHaveLength(2);
     expect(dms.every((d) => d.origin === 'glimmer')).toBe(true);
@@ -128,12 +162,16 @@ describe('resolveAmbientClient', () => {
 });
 
 describe('friendPing', () => {
-  function baseStore() {
+  function baseStore(policy: string | null = null) {
     const dms: Array<{ origin: string; body: string }> = [];
     return {
       dms,
       async getPersona() {
         return { id: 'persona-friend', displayName: 'Coral' };
+      },
+      async getAgentConfig(key: string) {
+        if (policy === null) throw new Error('no storage');
+        return { key, value: policy };
       },
       async createDm(dm: { origin: string; body: string }) {
         dms.push(dm);
@@ -150,13 +188,20 @@ describe('friendPing', () => {
     expect(store.dms[0].body).toBe('live text');
   });
 
-  it('falls back to the offline pool when the live client fails', async () => {
+  it('falls back to the offline pool when the live client fails under hybrid', async () => {
     mockResolve.mockResolvedValue(failingClient());
-    const store = baseStore();
+    const store = baseStore('hybrid');
     await friendPing(store as never, 'persona-friend', undefined);
     expect(store.dms).toHaveLength(1);
     expect(store.dms[0].origin).toBe('offline');
     expect(getAmbientStatus().lastError).toMatch(/401/);
+  });
+
+  it('skips pool fill when the live client fails under strict', async () => {
+    mockResolve.mockResolvedValue(failingClient());
+    const store = baseStore('strict');
+    await friendPing(store as never, 'persona-friend', undefined);
+    expect(store.dms).toHaveLength(0);
   });
 
   it('stays offline when no endpoint is configured', async () => {

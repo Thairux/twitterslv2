@@ -1,0 +1,29 @@
+{
+  "version": "3.0.0",
+  "releasedAt": "2026-10-07T00:00:00Z",
+  "commit": "HEAD",
+  "build": {
+    "typeCheck": "pass",
+    "test": "pass",
+    "build": "pass",
+    "e2e": "pass"
+  },
+  "gates": {
+    "loop1Critique": "pass",
+    "loop2Validation": "pass",
+    "loop3Regression": "pass",
+    "openHighMedium": 0
+  },
+  "features": [
+    "Strict-default inference policy with validation and cooldowns",
+    "OpenCode-style provider profiles with per-persona routing",
+    "Relationship graph, persona state, sleep, context prompts",
+    "Stories, SVG identity, arrivals, model Gazette, grouped notifications",
+    "DM depth, collections, share PNGs, analytics, badges",
+    "Sim console, transparency, backup import, a11y, feed mechanics",
+    "Reply audience, muted scopes, onboarding route, river, vB icon"
+  ],
+  "artifacts": [
+    "releases/3.0.0/twitterslv2-3.0.0-release.apk"
+  ]
+}

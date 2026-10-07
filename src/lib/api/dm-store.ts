@@ -9,6 +9,7 @@ interface DmRow {
   senderId: string;
   body: string;
   imagePath: string | null;
+  replyToId?: string;
   createdAt: string;
   origin: 'glimmer' | 'offline';
 }
@@ -19,6 +20,7 @@ export interface Dm {
   senderId: string;
   body: string;
   imagePath?: string;
+  replyToId?: string;
   createdAt: string;
   origin: 'glimmer' | 'offline';
 }
@@ -46,7 +48,7 @@ export class DmStore {
   async getThread(threadId: string): Promise<Dm[]> {
     const rows = await this.store.query<DmRow>(
       `SELECT id, thread_id AS threadId, sender_id AS senderId, body, image_path AS imagePath,
-              created_at AS createdAt, origin
+              reply_to_id AS replyToId, created_at AS createdAt, origin
        FROM dms
        WHERE thread_id = ?
        ORDER BY created_at ASC`,
@@ -58,12 +60,13 @@ export class DmStore {
       senderId: r.senderId,
       body: r.body,
       imagePath: r.imagePath || undefined,
+      replyToId: r.replyToId || undefined,
       createdAt: r.createdAt,
       origin: r.origin,
     }));
   }
 
-  async sendMessage(threadId: string, senderId: string, body: string): Promise<Dm> {
+  async sendMessage(threadId: string, senderId: string, body: string, replyToId?: string): Promise<Dm> {
     const id = `dm_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const createdAt = new Date().toISOString();
     await this.store.createDm({
@@ -71,6 +74,7 @@ export class DmStore {
       threadId,
       senderId,
       body,
+      replyToId,
       createdAt,
       origin: 'glimmer',
     });
@@ -79,6 +83,7 @@ export class DmStore {
       threadId,
       senderId,
       body,
+      replyToId,
       createdAt,
       origin: 'glimmer',
     };
@@ -91,7 +96,7 @@ export class DmStore {
   async listInbox(_userId: string): Promise<ThreadInboxItem[]> {
     const allDms = await this.store.query<DmRow>(
       `SELECT id, thread_id AS threadId, sender_id AS senderId, body, image_path AS imagePath,
-              created_at AS createdAt, origin
+              reply_to_id AS replyToId, created_at AS createdAt, origin
        FROM dms`,
     );
     const userDms = allDms.filter((d) => d.threadId.startsWith('user:'));

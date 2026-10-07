@@ -5,6 +5,7 @@
 
 import { Store } from './store';
 import { apiFetch, type SimpleResponse } from './http';
+import { notePrompt } from './ambient-status';
 
 export interface ModelClientOptions {
   chatEndpoint?: string;
@@ -13,6 +14,8 @@ export interface ModelClientOptions {
   captionEndpoint?: string;
   /** Model id sent as `model` in chat requests (e.g. Kilo gateway ids). */
   defaultModel?: string;
+  /** Custom auth header name (e.g. `x-api-key`); default is Bearer. */
+  authHeader?: string;
 }
 
 export class ConnectionError extends Error {}
@@ -43,6 +46,7 @@ export class ModelClient {
   readonly imageGenEndpoint?: string;
   readonly captionEndpoint?: string;
   readonly defaultModel?: string;
+  readonly authHeader?: string;
 
   constructor(endpoint: string, apiKey?: string, opts: ModelClientOptions = {}) {
     this.chatEndpoint = opts.chatEndpoint ?? endpoint;
@@ -50,6 +54,13 @@ export class ModelClient {
     this.imageGenEndpoint = opts.imageGenEndpoint;
     this.captionEndpoint = opts.captionEndpoint;
     this.defaultModel = opts.defaultModel;
+    this.authHeader = opts.authHeader;
+  }
+
+  private authHeaders(): Record<string, string> {
+    if (!this.chatApiKey) return {};
+    if (this.authHeader) return { [this.authHeader]: this.chatApiKey };
+    return { Authorization: `Bearer ${this.chatApiKey}` };
   }
 
   async chat(
@@ -62,6 +73,7 @@ export class ModelClient {
     const base = this.chatEndpoint.replace(/\/$/, '');
     const url = `${base}/v1/chat/completions`;
     const model = opts.model ?? this.defaultModel;
+    notePrompt(this.chatEndpoint, messages);
     const retryDelayMs = opts.retryDelayMs ?? 3000;
     let rateLimitedOnce = false;
     for (;;) {
@@ -70,7 +82,7 @@ export class ModelClient {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
+            ...this.authHeaders(),
           },
           body: JSON.stringify({ ...(model ? { model } : {}), messages }),
           timeoutMs: 30_000,
@@ -175,7 +187,7 @@ export class ModelClient {
     if (!this.chatEndpoint) return { ok: false, models: [], error: 'Model endpoint URL is empty' };
     const base = this.chatEndpoint.replace(/\/$/, '');
     const headers: Record<string, string> = {
-      ...(this.chatApiKey ? { Authorization: `Bearer ${this.chatApiKey}` } : {}),
+      ...this.authHeaders(),
     };
     const get = async (path: string, timeoutMs: number) =>
       apiFetch(`${base}${path}`, { headers, timeoutMs });
