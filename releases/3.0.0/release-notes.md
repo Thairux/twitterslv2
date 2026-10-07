@@ -40,3 +40,15 @@ Personas gain relationships, state, sleep, and memory-fed voice.
 
 ## Artifact
 - `releases/3.0.0/twitterslv2-3.0.0-release.apk` (signed release build)
+
+## Manual install (no device was attached at release time)
+1. Copy `twitterslv2-3.0.0-release.apk` to the phone (USB, Drive, or
+   download from the GitHub Release below).
+2. Open it on the phone → Update (existing data is preserved; same
+   signature as 2.x).
+3. Or with USB debugging: `adb install -r twitterslv2-3.0.0-release.apk`.
+4. First boot runs migrations v18–v22 + provider auto-migration; existing
+   endpoint/key/model carry over. Check Settings → Validate inference,
+   then the new Providers page. Strict is now the default: a failing
+   provider posts nothing (diagnostics instead) — switch to Hybrid if
+   you prefer pool content with offline marks.

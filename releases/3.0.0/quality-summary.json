@@ -6,5 +6,5 @@
   "typecheck": "pass",
   "build": "pass",
   "releaseVerify": "pass",
-  "device": "adb install -r attempted after release"
+  "device": "no device attached at release time — manual install required (see notes)"
 }
